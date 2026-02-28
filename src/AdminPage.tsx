@@ -193,7 +193,7 @@ function AdminPage({ submissions, setSubmissions, hackathons, setHackathons }: A
         <h2 className="cardTitle">Admin access</h2>
         <p className="cardHint">Enter password to access admin dashboard.</p>
         <form className="form" onSubmit={handlePasswordSubmit} noValidate>
-          <div className="grid">
+          <div className="formGrid">
             <div className="field">
               <label htmlFor="adminPassword">
                 Password <span className="req">*</span>
@@ -273,7 +273,7 @@ function AdminPage({ submissions, setSubmissions, hackathons, setHackathons }: A
       <section className="card">
         <h2 className="cardTitle">Create hackathon</h2>
         <form className="form" onSubmit={handleCreateHackathon} noValidate>
-          <div className="grid">
+          <div className="formGrid">
             <div className="field">
               <label htmlFor="hackathonName">
                 Name <span className="req">*</span>

@@ -20,6 +20,7 @@ type DbSubmissionRow = {
   app_link: string
   hackathon_id: string
   votes: number
+  user_id: string | null
 }
 
 function fromDbHackathon(row: DbHackathonRow): Hackathon {
@@ -55,6 +56,7 @@ function fromDbSubmission(row: DbSubmissionRow): Submission {
     appLink: row.app_link,
     hackathonId: row.hackathon_id,
     votes: row.votes,
+    userId: row.user_id ?? null,
   }
 }
 
@@ -69,6 +71,7 @@ function toDbSubmission(s: Submission): DbSubmissionRow {
     app_link: s.appLink,
     hackathon_id: s.hackathonId,
     votes: s.votes,
+    user_id: s.userId ?? null,
   }
 }
 

@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AdminPage from './AdminPage'
-import { isSupabaseConfigured } from './lib/supabaseClient'
+import { isSupabaseConfigured, supabase } from './lib/supabaseClient'
 import * as db from './lib/db'
+import type { User } from '@supabase/supabase-js'
+import ProfilePage from './pages/ProfilePage'
+import LandingPage from './pages/LandingPage'
 
 export type Submission = {
   id: string
@@ -14,9 +17,10 @@ export type Submission = {
   appLink: string
   hackathonId: string
   votes: number
+  userId: string | null
 }
 
-type FormState = Omit<Submission, 'id' | 'createdAt' | 'votes'>
+type FormState = Omit<Submission, 'id' | 'createdAt' | 'votes' | 'userId'>
 
 export type Hackathon = {
   id: string
@@ -54,6 +58,7 @@ const seedSubmissions: Submission[] = [
     appLink: SEED_NUMEROLOGY_LINK,
     hackathonId: DEFAULT_HACKATHON_ID,
     votes: 0,
+    userId: null,
   },
   {
     id: 'seed_study_buddy',
@@ -67,6 +72,7 @@ const seedSubmissions: Submission[] = [
     appLink: SEED_STUDY_BUDDY_LINK,
     hackathonId: DEFAULT_HACKATHON_ID,
     votes: 0,
+    userId: null,
   },
   {
     id: 'seed_smart_food_rescue',
@@ -80,6 +86,7 @@ const seedSubmissions: Submission[] = [
     appLink: SEED_FOOD_WASTE_LINK,
     hackathonId: IMPACT_AI_HACKATHON_ID,
     votes: 0,
+    userId: null,
   },
   {
     id: 'seed_weekend_trip_planner',
@@ -93,6 +100,7 @@ const seedSubmissions: Submission[] = [
     appLink: SEED_TRAVEL_PLANNER_LINK,
     hackathonId: IMPACT_AI_HACKATHON_ID,
     votes: 0,
+    userId: null,
   },
   {
     id: 'seed_mood_check_in_assistant',
@@ -106,6 +114,7 @@ const seedSubmissions: Submission[] = [
     appLink: SEED_MENTAL_WELLNESS_LINK,
     hackathonId: CAMPUS_HACKATHON_ID,
     votes: 0,
+    userId: null,
   },
   {
     id: 'seed_volunteer_match_assistant',
@@ -119,6 +128,7 @@ const seedSubmissions: Submission[] = [
     appLink: SEED_VOLUNTEER_MATCH_LINK,
     hackathonId: IMPACT_AI_HACKATHON_ID,
     votes: 0,
+    userId: null,
   },
   {
     id: 'seed_skillbridge_mentor',
@@ -132,6 +142,7 @@ const seedSubmissions: Submission[] = [
     appLink: SEED_SKILLBRIDGE_LINK,
     hackathonId: DEFAULT_HACKATHON_ID,
     votes: 0,
+    userId: null,
   },
   {
     id: 'seed_green_route_transit',
@@ -145,6 +156,7 @@ const seedSubmissions: Submission[] = [
     appLink: SEED_GREEN_ROUTE_LINK,
     hackathonId: CAMPUS_HACKATHON_ID,
     votes: 0,
+    userId: null,
   },
 ]
 
@@ -369,6 +381,7 @@ function normalizeStoredSubmission(value: unknown): Submission | null {
         ? submission.hackathonId
         : DEFAULT_HACKATHON_ID,
     votes: typeof submission.votes === 'number' && Number.isFinite(submission.votes) ? submission.votes : 0,
+    userId: typeof submission.userId === 'string' ? submission.userId : null,
   }
 }
 
@@ -395,7 +408,12 @@ function submissionChanged(a: Submission, b: Submission) {
   )
 }
 
-function HeaderNav() {
+function RequireAuth({ user, children }: { user: User | null; children: React.ReactNode }) {
+  if (!user) return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
+function HeaderNav({ user }: { user: User | null }) {
   const location = useLocation()
   const onSubmitPage = location.pathname === '/submit'
   const onAdminPage = location.pathname === '/admin'
@@ -429,15 +447,42 @@ function HeaderNav() {
 
         {!onAdminPage && (
           <div className="headerActions">
-            {onSubmitPage ? (
-              <Link className="btn btnGhost" to="/">
-                View submissions
-              </Link>
+            {user ? (
+              <>
+                <Link className="btn btnGhost" to="/profile">
+                  Profile
+                </Link>
+                <button
+                  className="btn btnGhost"
+                  type="button"
+                  onClick={() => {
+                    if (!supabase) return
+                    void supabase.auth.signOut()
+                  }}
+                >
+                  Sign out
+                </button>
+              </>
             ) : (
-              <Link className="btn" to="/submit">
-                New submission
-              </Link>
+              <>
+                <Link className="btn btnGhost" to="/login">
+                  Log in
+                </Link>
+                <Link className="btn" to="/signup">
+                  Sign up
+                </Link>
+              </>
             )}
+            {user &&
+              (onSubmitPage ? (
+                <Link className="btn btnGhost" to="/home">
+                  View submissions
+                </Link>
+              ) : (
+                <Link className="btn" to="/submit">
+                  New submission
+                </Link>
+              ))}
           </div>
         )}
       </div>
@@ -490,7 +535,7 @@ function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
               >
                 {featured.map((s) => (
                   <div className="featuredSlide" key={s.id}>
-                    <article className="submission" role="article">
+                    <article className="submission submissionFeatured" role="article">
                       <div className="submissionTop">
                         <div>
                           <a className="submissionTitleLink" href={s.appLink} target="_blank" rel="noopener noreferrer">
@@ -629,9 +674,11 @@ function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
 function NewSubmissionPage({
   onCreate,
   hackathons,
+  currentUserId,
 }: {
   onCreate: (submission: Submission) => void
   hackathons: Hackathon[]
+  currentUserId: string | null
 }) {
   const [justSavedId, setJustSavedId] = useState<string | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
@@ -722,6 +769,7 @@ function NewSubmissionPage({
       appLink: normalizeUrl(form.appLink),
       hackathonId: form.hackathonId,
       votes: 0,
+      userId: currentUserId,
     }
 
     onCreate(submission)
@@ -744,7 +792,7 @@ function NewSubmissionPage({
       )}
 
       <form className="form" onSubmit={submit} noValidate>
-        <div className="grid">
+        <div className="formGrid">
           <div className="field">
             <label htmlFor="participantName">
               Name of participant <span className="req">*</span>
@@ -912,8 +960,29 @@ function App() {
   const [hasLoadedHackathons, setHasLoadedHackathons] = useState(false)
   const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const prevSubmissionsRef = useRef<Map<string, Submission> | null>(null)
   const prevHackathonsRef = useRef<Map<string, Hackathon> | null>(null)
+
+  useEffect(() => {
+    if (!supabase) return
+
+    let cancelled = false
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return
+      setUser(data.session?.user ?? null)
+    })
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return
+      setUser(session?.user ?? null)
+    })
+
+    return () => {
+      cancelled = true
+      sub.subscription.unsubscribe()
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -1100,7 +1169,7 @@ function App() {
 
   return (
     <div className="page">
-      <HeaderNav />
+      {user ? <HeaderNav user={user} /> : null}
 
       <main className="content">
         {dbError && (
@@ -1109,25 +1178,48 @@ function App() {
           </div>
         )}
         <Routes>
-          <Route path="/" element={<SubmissionsPage submissions={submissions} />} />
+          <Route path="/" element={user ? <Navigate to="/home" replace /> : <LandingPage />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/signup" element={<Navigate to="/" replace />} />
+          <Route
+            path="/home"
+            element={
+              <RequireAuth user={user}>
+                <SubmissionsPage submissions={submissions} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <RequireAuth user={user}>
+                <ProfilePage user={user} />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/submit"
             element={
-              <NewSubmissionPage
-                onCreate={(s) => setSubmissions((prev) => [s, ...prev])}
-                hackathons={hackathons}
-              />
+              <RequireAuth user={user}>
+                <NewSubmissionPage
+                  onCreate={(s) => setSubmissions((prev) => [s, ...prev])}
+                  hackathons={hackathons}
+                  currentUserId={user?.id ?? null}
+                />
+              </RequireAuth>
             }
           />
           <Route
             path="/admin"
             element={
-              <AdminPage
-                submissions={submissions}
-                setSubmissions={setSubmissions}
-                hackathons={hackathons}
-                setHackathons={setHackathons}
-              />
+              <RequireAuth user={user}>
+                <AdminPage
+                  submissions={submissions}
+                  setSubmissions={setSubmissions}
+                  hackathons={hackathons}
+                  setHackathons={setHackathons}
+                />
+              </RequireAuth>
             }
           />
         </Routes>
