@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import AdminPage from './AdminPage'
 
-type Submission = {
+export type Submission = {
   id: string
   createdAt: string
   participantName: string
@@ -9,12 +10,34 @@ type Submission = {
   appDescription: string
   problemDescription: string
   appLink: string
+  hackathonId: string
+  votes: number
 }
 
-type FormState = Omit<Submission, 'id' | 'createdAt'>
+type FormState = Omit<Submission, 'id' | 'createdAt' | 'votes'>
+
+export type Hackathon = {
+  id: string
+  name: string
+  acceptingSubmissions: boolean
+  startsAt: string
+  endsAt: string
+  createdAt: string
+}
 
 const STORAGE_KEY = 'aoai.submissions.v1'
+const HACKATHON_STORAGE_KEY = 'aoai.hackathons.v1'
+const DEFAULT_HACKATHON_ID = 'default-hackathon'
+const IMPACT_AI_HACKATHON_ID = 'impact-ai-weekend-2026'
+const CAMPUS_HACKATHON_ID = 'campus-innovation-challenge-2026'
 const SEED_NUMEROLOGY_LINK = 'https://numerology-app-with-1762069380857.chatand.build/'
+const SEED_STUDY_BUDDY_LINK = 'https://study-buddy-ai.chatand.build/'
+const SEED_FOOD_WASTE_LINK = 'https://smart-food-rescue.chatand.build/'
+const SEED_TRAVEL_PLANNER_LINK = 'https://weekend-trip-planner.chatand.build/'
+const SEED_MENTAL_WELLNESS_LINK = 'https://mood-check-in-assistant.chatand.build/'
+const SEED_VOLUNTEER_MATCH_LINK = 'https://volunteer-match-assistant.chatand.build/'
+const SEED_SKILLBRIDGE_LINK = 'https://skillbridge-mentor.chatand.build/'
+const SEED_GREEN_ROUTE_LINK = 'https://greenroute-transit.chatand.build/'
 
 const seedSubmissions: Submission[] = [
   {
@@ -27,6 +50,99 @@ const seedSubmissions: Submission[] = [
     problemDescription:
       'Makes numerology readings easy to access in a clean, guided flow without needing specialized tools or prior knowledge.',
     appLink: SEED_NUMEROLOGY_LINK,
+    hackathonId: DEFAULT_HACKATHON_ID,
+    votes: 0,
+  },
+  {
+    id: 'seed_study_buddy',
+    createdAt: '2026-02-26T18:30:00.000Z',
+    participantName: 'Ari L',
+    appName: 'Study Buddy AI',
+    appDescription:
+      'Generates personalized study plans, quick quizzes, and topic summaries from class notes to help students prepare faster.',
+    problemDescription:
+      'Many students struggle to turn messy notes into a structured revision plan. This app reduces prep time and keeps daily study goals clear.',
+    appLink: SEED_STUDY_BUDDY_LINK,
+    hackathonId: DEFAULT_HACKATHON_ID,
+    votes: 0,
+  },
+  {
+    id: 'seed_smart_food_rescue',
+    createdAt: '2026-02-26T15:10:00.000Z',
+    participantName: 'Mina R',
+    appName: 'Smart Food Rescue',
+    appDescription:
+      'Tracks pantry items, predicts expiry dates, and suggests recipes using ingredients you already have at home.',
+    problemDescription:
+      'Households waste food because they forget what they have and when it expires. The app nudges users early and gives practical meal ideas.',
+    appLink: SEED_FOOD_WASTE_LINK,
+    hackathonId: IMPACT_AI_HACKATHON_ID,
+    votes: 0,
+  },
+  {
+    id: 'seed_weekend_trip_planner',
+    createdAt: '2026-02-26T10:00:00.000Z',
+    participantName: 'Noah T',
+    appName: 'Weekend Trip Planner',
+    appDescription:
+      'Builds short travel itineraries based on budget, interests, and weather, with maps and local activity recommendations.',
+    problemDescription:
+      'People often skip short trips because planning feels time-consuming. This app creates a ready-to-use itinerary in minutes.',
+    appLink: SEED_TRAVEL_PLANNER_LINK,
+    hackathonId: IMPACT_AI_HACKATHON_ID,
+    votes: 0,
+  },
+  {
+    id: 'seed_mood_check_in_assistant',
+    createdAt: '2026-02-25T22:45:00.000Z',
+    participantName: 'Jules K',
+    appName: 'Mood Check-In Assistant',
+    appDescription:
+      'Offers daily mood tracking, reflection prompts, and lightweight coping exercises based on how users report feeling.',
+    problemDescription:
+      'Mental wellness support is often hard to access consistently. This app makes daily check-ins quick and encourages healthier habits over time.',
+    appLink: SEED_MENTAL_WELLNESS_LINK,
+    hackathonId: CAMPUS_HACKATHON_ID,
+    votes: 0,
+  },
+  {
+    id: 'seed_volunteer_match_assistant',
+    createdAt: '2026-02-25T18:20:00.000Z',
+    participantName: 'Rina P',
+    appName: 'Volunteer Match Assistant',
+    appDescription:
+      'Matches volunteers with nearby nonprofits based on interests, schedules, and required skills.',
+    problemDescription:
+      'Community organizations struggle to find reliable volunteers quickly. This app reduces outreach effort and helps volunteers discover impactful opportunities.',
+    appLink: SEED_VOLUNTEER_MATCH_LINK,
+    hackathonId: IMPACT_AI_HACKATHON_ID,
+    votes: 0,
+  },
+  {
+    id: 'seed_skillbridge_mentor',
+    createdAt: '2026-02-25T15:05:00.000Z',
+    participantName: 'Dev N',
+    appName: 'SkillBridge Mentor',
+    appDescription:
+      'Creates guided learning tracks and mini projects tailored to a learner’s goals and current skill level.',
+    problemDescription:
+      'Many early-career learners get stuck choosing what to learn next. The app provides a structured, personalized roadmap and practical milestones.',
+    appLink: SEED_SKILLBRIDGE_LINK,
+    hackathonId: DEFAULT_HACKATHON_ID,
+    votes: 0,
+  },
+  {
+    id: 'seed_green_route_transit',
+    createdAt: '2026-02-24T21:40:00.000Z',
+    participantName: 'Kai W',
+    appName: 'GreenRoute Transit',
+    appDescription:
+      'Recommends lower-emission commute routes by comparing public transit, walking, biking, and car options.',
+    problemDescription:
+      'People want to reduce daily emissions but lack easy visibility into route impact. This app surfaces practical low-carbon alternatives.',
+    appLink: SEED_GREEN_ROUTE_LINK,
+    hackathonId: CAMPUS_HACKATHON_ID,
+    votes: 0,
   },
 ]
 
@@ -53,11 +169,18 @@ function normalizeUrl(value: string) {
   return `https://${raw}`
 }
 
-function validate(state: FormState) {
+function validate(state: FormState, acceptingHackathons: Hackathon[]) {
   const errors: Partial<Record<keyof FormState, string>> = {}
 
   if (!state.participantName.trim()) errors.participantName = 'Participant name is required.'
   if (!state.appName.trim()) errors.appName = 'App name is required.'
+  if (acceptingHackathons.length === 0) {
+    errors.hackathonId = 'No hackathons are currently accepting submissions.'
+  } else if (!state.hackathonId) {
+    errors.hackathonId = 'Hackathon is required.'
+  } else if (!acceptingHackathons.some((hackathon) => hackathon.id === state.hackathonId)) {
+    errors.hackathonId = 'Please choose a valid hackathon.'
+  }
 
   const appDescWords = wordCount(state.appDescription)
   if (!state.appDescription.trim()) errors.appDescription = 'Brief app description is required.'
@@ -83,9 +206,174 @@ function validate(state: FormState) {
   return errors
 }
 
+function legacyScheduleWindow(acceptingSubmissions: boolean, createdAt: string) {
+  const createdMs = Date.parse(createdAt)
+  const safeCreatedMs = Number.isFinite(createdMs) ? createdMs : Date.now()
+  const oneDayMs = 24 * 60 * 60 * 1000
+
+  if (acceptingSubmissions) {
+    return {
+      startsAt: new Date(safeCreatedMs - oneDayMs).toISOString(),
+      endsAt: new Date(safeCreatedMs + oneDayMs * 365).toISOString(),
+    }
+  }
+
+  return {
+    startsAt: new Date(safeCreatedMs - oneDayMs * 365).toISOString(),
+    endsAt: new Date(safeCreatedMs - 60 * 1000).toISOString(),
+  }
+}
+
+function normalizeStoredHackathon(value: unknown): Hackathon | null {
+  if (!value || typeof value !== 'object') return null
+  const hackathon = value as Partial<Hackathon>
+  if (
+    typeof hackathon.id !== 'string' ||
+    typeof hackathon.name !== 'string' ||
+    typeof hackathon.acceptingSubmissions !== 'boolean' ||
+    typeof hackathon.createdAt !== 'string'
+  ) {
+    return null
+  }
+
+  const fallbackWindow = legacyScheduleWindow(hackathon.acceptingSubmissions, hackathon.createdAt)
+  const startsAt =
+    typeof hackathon.startsAt === 'string' && Number.isFinite(Date.parse(hackathon.startsAt))
+      ? hackathon.startsAt
+      : fallbackWindow.startsAt
+  const endsAt =
+    typeof hackathon.endsAt === 'string' && Number.isFinite(Date.parse(hackathon.endsAt))
+      ? hackathon.endsAt
+      : fallbackWindow.endsAt
+
+  return {
+    id: hackathon.id,
+    name: hackathon.name,
+    acceptingSubmissions: hackathon.acceptingSubmissions,
+    startsAt,
+    endsAt,
+    createdAt: hackathon.createdAt,
+  }
+}
+
+function isHackathonOpen(hackathon: Hackathon, nowMs: number) {
+  const startsMs = Date.parse(hackathon.startsAt)
+  const endsMs = Date.parse(hackathon.endsAt)
+  if (!Number.isFinite(startsMs) || !Number.isFinite(endsMs)) return hackathon.acceptingSubmissions
+  return hackathon.acceptingSubmissions && nowMs >= startsMs && nowMs <= endsMs
+}
+
+function defaultHackathon(): Hackathon {
+  return {
+    id: DEFAULT_HACKATHON_ID,
+    name: 'AI Product Launchpad 2026',
+    acceptingSubmissions: true,
+    startsAt: '2026-02-20T09:00:00.000Z',
+    endsAt: '2026-03-20T23:59:59.000Z',
+    createdAt: '2026-02-20T09:00:00.000Z',
+  }
+}
+
+function seedHackathons(): Hackathon[] {
+  return [
+    defaultHackathon(),
+    {
+      id: IMPACT_AI_HACKATHON_ID,
+      name: 'Impact AI Weekend 2026',
+      acceptingSubmissions: true,
+      startsAt: '2026-02-19T09:00:00.000Z',
+      endsAt: '2026-03-03T23:59:59.000Z',
+      createdAt: '2026-02-19T09:00:00.000Z',
+    },
+    {
+      id: CAMPUS_HACKATHON_ID,
+      name: 'Campus Innovation Challenge',
+      acceptingSubmissions: false,
+      startsAt: '2026-02-18T09:00:00.000Z',
+      endsAt: '2026-02-24T23:59:59.000Z',
+      createdAt: '2026-02-18T09:00:00.000Z',
+    },
+  ]
+}
+
+function saveHackathons(hackathons: Hackathon[]) {
+  try {
+    localStorage.setItem(HACKATHON_STORAGE_KEY, JSON.stringify(hackathons))
+  } catch {
+    // ignore storage quota / disabled storage
+  }
+}
+
+function getHackathons() {
+  const seeded = seedHackathons()
+  const seededById = new Map(seeded.map((hackathon) => [hackathon.id, hackathon] as const))
+
+  try {
+    const raw = localStorage.getItem(HACKATHON_STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown
+      if (Array.isArray(parsed)) {
+        const normalized = parsed
+          .map((hackathon) => normalizeStoredHackathon(hackathon))
+          .filter((hackathon): hackathon is Hackathon => hackathon !== null)
+        if (normalized.length === 0) throw new Error('No valid stored hackathons')
+
+        const migrated = normalized.map((hackathon) => {
+          const seededHackathon = seededById.get(hackathon.id)
+          if (!seededHackathon || hackathon.name === seededHackathon.name) return hackathon
+          return { ...hackathon, name: seededHackathon.name }
+        })
+
+        const existingIds = new Set(migrated.map((hackathon) => hackathon.id))
+        const missingSeeded = seeded.filter((hackathon) => !existingIds.has(hackathon.id))
+        const merged = [...migrated, ...missingSeeded]
+        saveHackathons(merged)
+        return merged
+      }
+    }
+  } catch {
+    // ignore corrupted storage
+  }
+
+  saveHackathons(seeded)
+  return seeded
+}
+
+function normalizeStoredSubmission(value: unknown): Submission | null {
+  if (!value || typeof value !== 'object') return null
+  const submission = value as Partial<Submission>
+  if (
+    typeof submission.id !== 'string' ||
+    typeof submission.createdAt !== 'string' ||
+    typeof submission.participantName !== 'string' ||
+    typeof submission.appName !== 'string' ||
+    typeof submission.appDescription !== 'string' ||
+    typeof submission.problemDescription !== 'string' ||
+    typeof submission.appLink !== 'string'
+  ) {
+    return null
+  }
+
+  return {
+    id: submission.id,
+    createdAt: submission.createdAt,
+    participantName: submission.participantName,
+    appName: submission.appName,
+    appDescription: submission.appDescription,
+    problemDescription: submission.problemDescription,
+    appLink: submission.appLink,
+    hackathonId:
+      typeof submission.hackathonId === 'string' && submission.hackathonId.trim().length > 0
+        ? submission.hackathonId
+        : DEFAULT_HACKATHON_ID,
+    votes: typeof submission.votes === 'number' && Number.isFinite(submission.votes) ? submission.votes : 0,
+  }
+}
+
 function HeaderNav() {
   const location = useLocation()
   const onSubmitPage = location.pathname === '/submit'
+  const onAdminPage = location.pathname === '/admin'
 
   return (
     <header className="header">
@@ -95,25 +383,35 @@ function HeaderNav() {
             <img className="brandLogo" src="/assets/aoai-logo.png" alt="AOAI logo" />
           </div>
           <div>
-            <h1 className="title">
-              <span className="titleLead">AOAI x ChatandBuild</span>{' '}
-              <span className="titleMain">Hackathon Submission Portal</span>
-            </h1>
-            <p className="subtitle">Browse submissions or add a new one.</p>
+            {onAdminPage ? (
+              <h1 className="title">
+                <span className="titleMain">Hackathon Admin Portal</span>
+              </h1>
+            ) : (
+              <>
+                <h1 className="title">
+                  <span className="titleLead">AOAI x ChatandBuild</span>{' '}
+                  <span className="titleMain">Hackathon Submission Portal</span>
+                </h1>
+                <p className="subtitle">Browse submissions or add a new one.</p>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="headerActions">
-          {onSubmitPage ? (
-            <Link className="btn btnGhost" to="/">
-              View submissions
-            </Link>
-          ) : (
-            <Link className="btn" to="/submit">
-              New submission
-            </Link>
-          )}
-        </div>
+        {!onAdminPage && (
+          <div className="headerActions">
+            {onSubmitPage ? (
+              <Link className="btn btnGhost" to="/">
+                View submissions
+              </Link>
+            ) : (
+              <Link className="btn" to="/submit">
+                New submission
+              </Link>
+            )}
+          </div>
+        )}
       </div>
     </header>
   )
@@ -255,12 +553,20 @@ function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
   )
 }
 
-function NewSubmissionPage({ onCreate }: { onCreate: (submission: Submission) => void }) {
+function NewSubmissionPage({
+  onCreate,
+  hackathons,
+}: {
+  onCreate: (submission: Submission) => void
+  hackathons: Hackathon[]
+}) {
   const [justSavedId, setJustSavedId] = useState<string | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   const [form, setForm] = useState<FormState>({
     participantName: '',
     appName: '',
+    hackathonId: '',
     appDescription: '',
     problemDescription: '',
     appLink: '',
@@ -268,10 +574,29 @@ function NewSubmissionPage({ onCreate }: { onCreate: (submission: Submission) =>
 
   const [touched, setTouched] = useState<Partial<Record<keyof FormState, boolean>>>({})
 
-  const errors = useMemo(() => validate(form), [form])
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const acceptingHackathons = useMemo(
+    () => hackathons.filter((hackathon) => isHackathonOpen(hackathon, nowMs)),
+    [hackathons, nowMs],
+  )
+
+  useEffect(() => {
+    if (acceptingHackathons.length === 0) return
+    setForm((prev) => {
+      const hasSelectedHackathon = acceptingHackathons.some((hackathon) => hackathon.id === prev.hackathonId)
+      if (hasSelectedHackathon) return prev
+      return { ...prev, hackathonId: acceptingHackathons[0].id }
+    })
+  }, [acceptingHackathons])
+
+  const errors = useMemo(() => validate(form, acceptingHackathons), [form, acceptingHackathons])
   const appDescWords = useMemo(() => wordCount(form.appDescription), [form.appDescription])
   const problemWords = useMemo(() => wordCount(form.problemDescription), [form.problemDescription])
-  const hardBlocked = appDescWords > 100 || problemWords > 200
+  const hardBlocked = appDescWords > 100 || problemWords > 200 || acceptingHackathons.length === 0
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -289,6 +614,7 @@ function NewSubmissionPage({ onCreate }: { onCreate: (submission: Submission) =>
     setForm({
       participantName: '',
       appName: '',
+      hackathonId: '',
       appDescription: '',
       problemDescription: '',
       appLink: '',
@@ -302,13 +628,14 @@ function NewSubmissionPage({ onCreate }: { onCreate: (submission: Submission) =>
     const nextTouched: Partial<Record<keyof FormState, boolean>> = {
       participantName: true,
       appName: true,
+      hackathonId: true,
       appDescription: true,
       problemDescription: true,
       appLink: true,
     }
     setTouched(nextTouched)
 
-    const currentErrors = validate(form)
+    const currentErrors = validate(form, acceptingHackathons)
     if (Object.keys(currentErrors).length > 0) return
 
     const now = new Date()
@@ -320,6 +647,8 @@ function NewSubmissionPage({ onCreate }: { onCreate: (submission: Submission) =>
       appDescription: form.appDescription.trim(),
       problemDescription: form.problemDescription.trim(),
       appLink: normalizeUrl(form.appLink),
+      hackathonId: form.hackathonId,
+      votes: 0,
     }
 
     onCreate(submission)
@@ -382,6 +711,36 @@ function NewSubmissionPage({ onCreate }: { onCreate: (submission: Submission) =>
             {showError('appName') && (
               <div className="error" id="appNameError">
                 {errors.appName}
+              </div>
+            )}
+          </div>
+
+          <div className="field">
+            <label htmlFor="hackathonId">
+              Hackathon <span className="req">*</span>
+            </label>
+            <select
+              id="hackathonId"
+              name="hackathonId"
+              value={form.hackathonId}
+              onChange={(e) => setField('hackathonId', e.target.value)}
+              onBlur={() => onBlur('hackathonId')}
+              aria-invalid={showError('hackathonId')}
+              aria-describedby={showError('hackathonId') ? 'hackathonIdError' : undefined}
+              disabled={acceptingHackathons.length === 0}
+            >
+              <option value="">
+                {acceptingHackathons.length === 0 ? 'No hackathons currently accepting' : 'Select a hackathon'}
+              </option>
+              {acceptingHackathons.map((hackathon) => (
+                <option key={hackathon.id} value={hackathon.id}>
+                  {hackathon.name}
+                </option>
+              ))}
+            </select>
+            {showError('hackathonId') && (
+              <div className="error" id="hackathonIdError">
+                {errors.hackathonId}
               </div>
             )}
           </div>
@@ -476,14 +835,20 @@ function NewSubmissionPage({ onCreate }: { onCreate: (submission: Submission) =>
 
 function App() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [hackathons, setHackathons] = useState<Hackathon[]>([])
+  const [hasLoadedHackathons, setHasLoadedHackathons] = useState(false)
 
   useEffect(() => {
     let stored: Submission[] = []
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
-        const parsed = JSON.parse(raw) as Submission[]
-        if (Array.isArray(parsed)) stored = parsed
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) {
+          stored = parsed
+            .map((item) => normalizeStoredSubmission(item))
+            .filter((item): item is Submission => item !== null)
+        }
       }
     } catch {
       // ignore corrupted storage
@@ -495,12 +860,22 @@ function App() {
   }, [])
 
   useEffect(() => {
+    setHackathons(getHackathons())
+    setHasLoadedHackathons(true)
+  }, [])
+
+  useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(submissions))
     } catch {
       // ignore storage quota / disabled storage
     }
   }, [submissions])
+
+  useEffect(() => {
+    if (!hasLoadedHackathons) return
+    saveHackathons(hackathons)
+  }, [hackathons, hasLoadedHackathons])
 
   return (
     <div className="page">
@@ -511,7 +886,23 @@ function App() {
           <Route path="/" element={<SubmissionsPage submissions={submissions} />} />
           <Route
             path="/submit"
-            element={<NewSubmissionPage onCreate={(s) => setSubmissions((prev) => [s, ...prev])} />}
+            element={
+              <NewSubmissionPage
+                onCreate={(s) => setSubmissions((prev) => [s, ...prev])}
+                hackathons={hackathons}
+              />
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminPage
+                submissions={submissions}
+                setSubmissions={setSubmissions}
+                hackathons={hackathons}
+                setHackathons={setHackathons}
+              />
+            }
           />
         </Routes>
       </main>

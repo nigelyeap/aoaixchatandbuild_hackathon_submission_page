@@ -51,7 +51,8 @@ a:hover {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -281,8 +282,9 @@ textarea {
   font-weight: 700;
 }
 
-input,
-textarea {
+input:not([type='checkbox']),
+textarea,
+select {
   width: 100%;
   border-radius: 12px;
   border: 1px solid #d7daea;
@@ -297,21 +299,196 @@ textarea {
   resize: vertical;
 }
 
-input::placeholder,
+input:not([type='checkbox'])::placeholder,
 textarea::placeholder {
   color: rgba(15, 23, 42, 0.38);
 }
 
-input:focus,
-textarea:focus {
+input:not([type='checkbox']):focus,
+textarea:focus,
+select:focus {
   border-color: rgba(63, 55, 201, 0.55);
   box-shadow: 0 0 0 4px rgba(63, 55, 201, 0.14);
 }
 
-input[aria-invalid='true'],
-textarea[aria-invalid='true'] {
+input:not([type='checkbox'])[aria-invalid='true'],
+textarea[aria-invalid='true'],
+select[aria-invalid='true'] {
   border-color: rgba(180, 35, 24, 0.40);
   box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.10);
+}
+
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted2) 50%),
+    linear-gradient(135deg, var(--muted2) 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+
+.checkboxRow {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkboxRow input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.adminHackathonHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hackathonDropdown {
+  margin-top: 12px;
+  position: relative;
+}
+
+.hackathonDropdownTrigger {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid #d7daea;
+  background: #ffffff;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.hackathonDropdownLabel {
+  min-width: 0;
+  text-align: left;
+}
+
+.hackathonDropdownMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hackathonDropdownArrow {
+  color: var(--muted2);
+  font-size: 12px;
+  line-height: 1;
+  transition: transform 120ms ease;
+}
+
+.hackathonDropdownArrow.isOpen {
+  transform: rotate(180deg);
+}
+
+.hackathonDropdownTrigger:hover {
+  background: var(--surface2);
+}
+
+.hackathonMenu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  border: 1px solid #d7daea;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.hackathonMenuItem {
+  width: 100%;
+  border: 0;
+  background: #ffffff;
+  color: var(--text);
+  padding: 10px 12px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.hackathonMenuItem + .hackathonMenuItem {
+  border-top: 1px solid #eceff8;
+}
+
+.hackathonMenuItem:hover {
+  background: var(--surface2);
+}
+
+.adminStatus {
+  font-weight: 700;
+}
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.statusOpen {
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.statusClosed {
+  color: #9a3412;
+  background: #ffedd5;
+  border: 1px solid #fdba74;
+}
+
+.tableWrap {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.adminTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.adminTable th,
+.adminTable td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.adminTable th {
+  color: var(--muted2);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.adminActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .error {
