@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import AdminPage from './AdminPage'
+import { isSupabaseConfigured } from './lib/supabaseClient'
+import * as db from './lib/db'
 
 export type Submission = {
   id: string
@@ -370,6 +372,29 @@ function normalizeStoredSubmission(value: unknown): Submission | null {
   }
 }
 
+function hackathonChanged(a: Hackathon, b: Hackathon) {
+  return (
+    a.name !== b.name ||
+    a.acceptingSubmissions !== b.acceptingSubmissions ||
+    a.startsAt !== b.startsAt ||
+    a.endsAt !== b.endsAt ||
+    a.createdAt !== b.createdAt
+  )
+}
+
+function submissionChanged(a: Submission, b: Submission) {
+  return (
+    a.createdAt !== b.createdAt ||
+    a.participantName !== b.participantName ||
+    a.appName !== b.appName ||
+    a.appDescription !== b.appDescription ||
+    a.problemDescription !== b.problemDescription ||
+    a.appLink !== b.appLink ||
+    a.hackathonId !== b.hackathonId ||
+    a.votes !== b.votes
+  )
+}
+
 function HeaderNav() {
   const location = useLocation()
   const onSubmitPage = location.pathname === '/submit'
@@ -379,8 +404,13 @@ function HeaderNav() {
     <header className="header">
       <div className="headerInner">
         <div className="brand">
-          <div className="brandMark">
-            <img className="brandLogo" src="/assets/aoai-logo.png" alt="AOAI logo" />
+          <div className="brandMarks">
+            <div className="brandMark">
+              <img className="brandLogo" src="/assets/aoai-logo.png" alt="AOAI logo" />
+            </div>
+            <div className="brandMark">
+              <img className="brandLogo brandLogoCnb" src="/assets/chatandbuild-logo.jpg" alt="ChatAndBuild logo" />
+            </div>
           </div>
           <div>
             {onAdminPage ? (
@@ -389,10 +419,8 @@ function HeaderNav() {
               </h1>
             ) : (
               <>
-                <h1 className="title">
-                  <span className="titleLead">AOAI x ChatandBuild</span>{' '}
-                  <span className="titleMain">Hackathon Submission Portal</span>
-                </h1>
+                <div className="titleLead">AOAI x ChatandBuild</div>
+                <h1 className="title">ChatAndBuild Hackathon Submission Portal</h1>
                 <p className="subtitle">Browse submissions or add a new one.</p>
               </>
             )}
@@ -419,12 +447,31 @@ function HeaderNav() {
 
 function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
   const featured = submissions.slice(0, 3)
+  const [featuredIndex, setFeaturedIndex] = useState(0)
+  const [carouselNonce, setCarouselNonce] = useState(0)
+
+  useEffect(() => {
+    setFeaturedIndex(0)
+  }, [featured.length])
+
+  useEffect(() => {
+    if (featured.length <= 1) return
+    const id = window.setInterval(() => {
+      setFeaturedIndex((i) => (i + 1) % featured.length)
+    }, 10_000)
+    return () => window.clearInterval(id)
+  }, [featured.length, carouselNonce])
+
+  function goToFeatured(nextIndex: number) {
+    setFeaturedIndex(nextIndex)
+    setCarouselNonce((n) => n + 1)
+  }
 
   return (
     <>
       <section className="card">
         <div className="listHeader">
-          <h2 className="cardTitle">Featured submissions</h2>
+          <h2 className="cardTitle cardTitleHero">Featured submissions</h2>
           <div className="pill" aria-label={`${featured.length} featured submissions`}>
             {featured.length}
           </div>
@@ -432,77 +479,103 @@ function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
 
         {submissions.length === 0 ? (
           <div className="empty">No submissions yet. Use “New submission” to add the first one.</div>
+        ) : featured.length === 0 ? (
+          <div className="empty">No featured submissions yet.</div>
         ) : (
-          <div className="list" role="list">
-            {featured.map((s) => (
-              <article className="submission" role="listitem" key={s.id}>
-                <div className="submissionTop">
-                  <div>
-                    <a className="submissionTitleLink" href={s.appLink} target="_blank" rel="noopener noreferrer">
-                      <div className="submissionTitle">{s.appName}</div>
-                    </a>
-                    <div className="submissionMeta">
-                      <span className="metaItem">{s.participantName}</span>
-                      <span className="metaDot" aria-hidden="true">
-                        ·
-                      </span>
-                      <time className="metaItem" dateTime={s.createdAt}>
-                        {new Date(s.createdAt).toLocaleString()}
-                      </time>
-                    </div>
-                  </div>
-                  <a className="link" href={s.appLink} target="_blank" rel="noopener noreferrer">
-                    Open app
-                  </a>
-                </div>
+          <div className="featuredCarousel" aria-label="Featured submission carousel">
+            <div className="featuredViewport">
+              <div
+                className="featuredTrack"
+                style={{ transform: `translateX(-${featuredIndex * 100}%)` }}
+              >
+                {featured.map((s) => (
+                  <div className="featuredSlide" key={s.id}>
+                    <article className="submission" role="article">
+                      <div className="submissionTop">
+                        <div>
+                          <a className="submissionTitleLink" href={s.appLink} target="_blank" rel="noopener noreferrer">
+                            <div className="submissionTitle">{s.appName}</div>
+                          </a>
+                          <div className="submissionMeta">
+                            <span className="metaItem">{s.participantName}</span>
+                            <span className="metaDot" aria-hidden="true">
+                              ·
+                            </span>
+                            <time className="metaItem" dateTime={s.createdAt}>
+                              {new Date(s.createdAt).toLocaleString()}
+                            </time>
+                          </div>
+                        </div>
+                        <a className="link" href={s.appLink} target="_blank" rel="noopener noreferrer">
+                          Open app
+                        </a>
+                      </div>
 
-                <a
-                  className="preview"
-                  href={s.appLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Open ${s.appName} preview`}
-                >
-                  <div className="previewHeader" aria-hidden="true">
-                    <span className="previewDots">
-                      <span className="dot" />
-                      <span className="dot" />
-                      <span className="dot" />
-                    </span>
-                    <span className="previewLabel">Live preview</span>
-                  </div>
-                  <div className="previewBody">
-                    <iframe
-                      className="previewIframe"
-                      title={`${s.appName} preview`}
-                      src={s.appLink}
-                      loading="lazy"
-                      sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
-                      referrerPolicy="no-referrer"
-                      tabIndex={-1}
-                    />
-                  </div>
-                </a>
+                      <a
+                        className="preview"
+                        href={s.appLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open ${s.appName} preview`}
+                      >
+                        <div className="previewHeader" aria-hidden="true">
+                          <span className="previewDots">
+                            <span className="dot" />
+                            <span className="dot" />
+                            <span className="dot" />
+                          </span>
+                          <span className="previewLabel">Live preview</span>
+                        </div>
+                        <div className="previewBody">
+                          <iframe
+                            className="previewIframe"
+                            title={`${s.appName} preview`}
+                            src={s.appLink}
+                            loading="lazy"
+                            sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
+                            referrerPolicy="no-referrer"
+                            tabIndex={-1}
+                          />
+                        </div>
+                      </a>
 
-                <div className="submissionBody">
-                  <div className="block">
-                    <div className="blockLabel">Brief description</div>
-                    <div className="blockText">{s.appDescription}</div>
+                      <div className="submissionBody">
+                        <div className="block">
+                          <div className="blockLabel">Brief description</div>
+                          <div className="blockText">{s.appDescription}</div>
+                        </div>
+                        <div className="block">
+                          <div className="blockLabel">Problem addressed</div>
+                          <div className="blockText">{s.problemDescription}</div>
+                        </div>
+                      </div>
+                    </article>
                   </div>
-                  <div className="block">
-                    <div className="blockLabel">Problem addressed</div>
-                    <div className="blockText">{s.problemDescription}</div>
-                  </div>
-                </div>
-              </article>
-            ))}
+                ))}
+              </div>
+            </div>
+
+            {featured.length > 1 && (
+              <div className="featuredDots" role="tablist" aria-label="Choose featured submission">
+                {featured.map((_, i) => (
+                  <button
+                    key={`featured_dot_${i}`}
+                    type="button"
+                    className={i === featuredIndex ? 'featuredDot featuredDotActive' : 'featuredDot'}
+                    onClick={() => goToFeatured(i)}
+                    aria-label={`Show featured submission ${i + 1} of ${featured.length}`}
+                    aria-current={i === featuredIndex}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>
 
       <section className="card">
         <div className="listHeader">
-          <h2 className="cardTitle">All submissions</h2>
+          <h2 className="cardTitle cardTitleHero">All submissions</h2>
           <div className="pill" aria-label={`${submissions.length} total submissions`}>
             {submissions.length}
           </div>
@@ -837,34 +910,123 @@ function App() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [hackathons, setHackathons] = useState<Hackathon[]>([])
   const [hasLoadedHackathons, setHasLoadedHackathons] = useState(false)
+  const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false)
+  const [dbError, setDbError] = useState<string | null>(null)
+  const prevSubmissionsRef = useRef<Map<string, Submission> | null>(null)
+  const prevHackathonsRef = useRef<Map<string, Hackathon> | null>(null)
 
   useEffect(() => {
-    let stored: Submission[] = []
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) {
-          stored = parsed
-            .map((item) => normalizeStoredSubmission(item))
-            .filter((item): item is Submission => item !== null)
+    let cancelled = false
+
+    async function loadFromSupabase(): Promise<boolean> {
+      setDbError(null)
+      try {
+        // local cache (optional migration)
+        let localStoredSubmissions: Submission[] = []
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY)
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (Array.isArray(parsed)) {
+              localStoredSubmissions = parsed
+                .map((item) => normalizeStoredSubmission(item))
+                .filter((item): item is Submission => item !== null)
+            }
+          }
+        } catch {
+          // ignore local storage issues
         }
+
+        const localHackathons = (() => {
+          try {
+            return getHackathons()
+          } catch {
+            return seedHackathons()
+          }
+        })()
+
+        const [remoteHackathons, remoteSubmissions] = await Promise.all([db.listHackathons(), db.listSubmissions()])
+
+        // Ensure seeded hackathons exist and migrate local hackathons into DB.
+        const seededHackathons = seedHackathons()
+        const hackathonById = new Map<string, Hackathon>()
+        for (const h of remoteHackathons) hackathonById.set(h.id, h)
+        for (const h of localHackathons) if (!hackathonById.has(h.id)) hackathonById.set(h.id, h)
+        for (const h of seededHackathons) if (!hackathonById.has(h.id)) hackathonById.set(h.id, h)
+        const mergedHackathons = Array.from(hackathonById.values()).sort(
+          (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+        )
+
+        // Merge submissions (remote + local + seeds)
+        const submissionById = new Map<string, Submission>()
+        for (const s of remoteSubmissions) submissionById.set(s.id, s)
+        for (const s of localStoredSubmissions) if (!submissionById.has(s.id)) submissionById.set(s.id, s)
+        const mergedNoSeeds = Array.from(submissionById.values())
+        const byLink = new Set(mergedNoSeeds.map((s) => s.appLink))
+        const missingSeeds = seedSubmissions.filter((s) => !byLink.has(s.appLink))
+        const mergedSubmissions = [...missingSeeds, ...mergedNoSeeds].sort(
+          (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+        )
+
+        // Persist merged state back to DB (idempotent)
+        await db.upsertHackathons(mergedHackathons)
+        await db.upsertSubmissions(mergedSubmissions)
+
+        if (cancelled) return false
+        setHackathons(mergedHackathons)
+        setSubmissions(mergedSubmissions)
+        setHasLoadedHackathons(true)
+        setHasLoadedFromDb(true)
+        return true
+      } catch (err) {
+        console.error(err)
+        if (cancelled) return false
+        setDbError('Supabase is configured but could not be reached. Falling back to local storage.')
+        setHasLoadedFromDb(false)
+        setHasLoadedHackathons(false)
+        return false
       }
-    } catch {
-      // ignore corrupted storage
     }
 
-    const byLink = new Set(stored.map((s) => s.appLink))
-    const seeded = seedSubmissions.filter((s) => !byLink.has(s.appLink))
-    setSubmissions(seeded.length > 0 ? [...seeded, ...stored] : stored)
+    function loadFromLocalStorage() {
+      let stored: Submission[] = []
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) {
+            stored = parsed
+              .map((item) => normalizeStoredSubmission(item))
+              .filter((item): item is Submission => item !== null)
+          }
+        }
+      } catch {
+        // ignore corrupted storage
+      }
+
+      const byLink = new Set(stored.map((s) => s.appLink))
+      const seeded = seedSubmissions.filter((s) => !byLink.has(s.appLink))
+      setSubmissions(seeded.length > 0 ? [...seeded, ...stored] : stored)
+
+      setHackathons(getHackathons())
+      setHasLoadedHackathons(true)
+    }
+
+    if (isSupabaseConfigured) {
+      void loadFromSupabase().then((ok) => {
+        if (!cancelled && !ok) loadFromLocalStorage()
+      })
+    } else {
+      loadFromLocalStorage()
+    }
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
-    setHackathons(getHackathons())
-    setHasLoadedHackathons(true)
-  }, [])
-
-  useEffect(() => {
+    if (isSupabaseConfigured) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(submissions))
     } catch {
@@ -874,14 +1036,78 @@ function App() {
 
   useEffect(() => {
     if (!hasLoadedHackathons) return
+    if (isSupabaseConfigured) return
     saveHackathons(hackathons)
   }, [hackathons, hasLoadedHackathons])
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !hasLoadedFromDb) return
+
+    const prev = prevSubmissionsRef.current ?? new Map<string, Submission>()
+    const next = new Map<string, Submission>(submissions.map((s) => [s.id, s] as const))
+
+    const deletedIds: string[] = []
+    for (const id of prev.keys()) {
+      if (!next.has(id)) deletedIds.push(id)
+    }
+
+    const changed: Submission[] = []
+    for (const [id, row] of next.entries()) {
+      const before = prev.get(id)
+      if (!before || submissionChanged(before, row)) changed.push(row)
+    }
+
+    prevSubmissionsRef.current = next
+
+    void (async () => {
+      try {
+        await db.upsertSubmissions(changed)
+        await db.deleteSubmissions(deletedIds)
+      } catch (err) {
+        console.error(err)
+      }
+    })()
+  }, [submissions, hasLoadedFromDb])
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !hasLoadedFromDb) return
+
+    const prev = prevHackathonsRef.current ?? new Map<string, Hackathon>()
+    const next = new Map<string, Hackathon>(hackathons.map((h) => [h.id, h] as const))
+
+    const deletedIds: string[] = []
+    for (const id of prev.keys()) {
+      if (!next.has(id)) deletedIds.push(id)
+    }
+
+    const changed: Hackathon[] = []
+    for (const [id, row] of next.entries()) {
+      const before = prev.get(id)
+      if (!before || hackathonChanged(before, row)) changed.push(row)
+    }
+
+    prevHackathonsRef.current = next
+
+    void (async () => {
+      try {
+        await db.upsertHackathons(changed)
+        await db.deleteHackathons(deletedIds)
+      } catch (err) {
+        console.error(err)
+      }
+    })()
+  }, [hackathons, hasLoadedFromDb])
 
   return (
     <div className="page">
       <HeaderNav />
 
       <main className="content">
+        {dbError && (
+          <div className="callout" role="status">
+            {dbError}
+          </div>
+        )}
         <Routes>
           <Route path="/" element={<SubmissionsPage submissions={submissions} />} />
           <Route

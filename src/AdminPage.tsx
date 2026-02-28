@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { Hackathon, Submission } from './App'
+import { isSupabaseConfigured } from './lib/supabaseClient'
+import * as db from './lib/db'
 
 const ADMIN_PASSWORD = 'admin123'
 const DEFAULT_HACKATHON_WINDOW_DAYS = 7
@@ -56,6 +58,8 @@ function AdminPage({ submissions, setSubmissions, hackathons, setHackathons }: A
   )
   const [createError, setCreateError] = useState('')
   const [nowMs, setNowMs] = useState(() => Date.now())
+  const [syncStatus, setSyncStatus] = useState<string | null>(null)
+  const [syncBusy, setSyncBusy] = useState(false)
 
   const groupedSubmissions = useMemo(() => {
     const byHackathon = new Map<string, Submission[]>()
@@ -224,6 +228,48 @@ function AdminPage({ submissions, setSubmissions, hackathons, setHackathons }: A
 
   return (
     <>
+      <section className="card">
+        <h2 className="cardTitle">Database sync</h2>
+        <p className="cardHint">
+          {isSupabaseConfigured
+            ? 'Push the current hackathons and submissions into Supabase.'
+            : 'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env and restart.'}
+        </p>
+
+        {syncStatus && (
+          <div className="callout success" role="status">
+            {syncStatus}
+          </div>
+        )}
+
+        <div className="actions">
+          <button
+            className="btn"
+            type="button"
+            disabled={!isSupabaseConfigured || syncBusy}
+            onClick={() => {
+              if (!isSupabaseConfigured) return
+              setSyncBusy(true)
+              setSyncStatus(null)
+              void (async () => {
+                try {
+                  await db.upsertHackathons(hackathons)
+                  await db.upsertSubmissions(submissions)
+                  setSyncStatus(`Synced ${hackathons.length} hackathons and ${submissions.length} submissions to Supabase.`)
+                } catch (err) {
+                  console.error(err)
+                  setSyncStatus('Sync failed. Check console for details.')
+                } finally {
+                  setSyncBusy(false)
+                }
+              })()
+            }}
+          >
+            {syncBusy ? 'Syncing…' : 'Sync to Supabase'}
+          </button>
+        </div>
+      </section>
+
       <section className="card">
         <h2 className="cardTitle">Create hackathon</h2>
         <form className="form" onSubmit={handleCreateHackathon} noValidate>
