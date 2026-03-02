@@ -505,10 +505,24 @@ function HeaderNav({ user }: { user: User | null }) {
   )
 }
 
-function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
+function SubmissionsPage({
+  submissions,
+  hackathons,
+  selectedHackathonId,
+  onSelectedHackathonChange,
+}: {
+  submissions: Submission[]
+  hackathons: Hackathon[]
+  selectedHackathonId: string
+  onSelectedHackathonChange: (hackathonId: string) => void
+}) {
   const featured = submissions.slice(0, 3)
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [carouselNonce, setCarouselNonce] = useState(0)
+  const selectedHackathonName = useMemo(() => {
+    if (selectedHackathonId === 'all') return 'All hackathons'
+    return hackathons.find((hackathon) => hackathon.id === selectedHackathonId)?.name ?? 'All hackathons'
+  }, [hackathons, selectedHackathonId])
 
   useEffect(() => {
     setFeaturedIndex(0)
@@ -532,10 +546,29 @@ function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
       <section className="card">
         <div className="listHeader">
           <h2 className="cardTitle cardTitleHero">Featured submissions</h2>
+          <div className="helpRow">
+            <label className="helpText" htmlFor="homeHackathonFilter">
+              Hackathon
+            </label>
+            <select
+              id="homeHackathonFilter"
+              value={selectedHackathonId}
+              onChange={(e) => onSelectedHackathonChange(e.target.value)}
+              aria-label="Filter submissions by hackathon"
+            >
+              <option value="all">All hackathons</option>
+              {hackathons.map((hackathon) => (
+                <option key={hackathon.id} value={hackathon.id}>
+                  {hackathon.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="pill" aria-label={`${featured.length} featured submissions`}>
             {featured.length}
           </div>
         </div>
+        <p className="cardHint">Showing: {selectedHackathonName}</p>
 
         {submissions.length === 0 ? (
           <div className="empty">No submissions yet. Use “New submission” to add the first one.</div>
