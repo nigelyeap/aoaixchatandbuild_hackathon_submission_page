@@ -6,6 +6,8 @@ import * as db from './lib/db'
 import type { User } from '@supabase/supabase-js'
 import ProfilePage from './pages/ProfilePage'
 import LandingPage from './pages/LandingPage'
+import AdminLoginPage from './pages/AdminLoginPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
 
 export type Submission = {
   id: string
@@ -33,6 +35,8 @@ export type Hackathon = {
 
 const STORAGE_KEY = 'aoai.submissions.v1'
 const HACKATHON_STORAGE_KEY = 'aoai.hackathons.v1'
+const SELECTED_HACKATHON_STORAGE_KEY = 'aoai.selectedHackathon.v1'
+const ADMIN_AUTH_STORAGE_KEY = 'aoai.adminAuthenticated.v1'
 const DEFAULT_HACKATHON_ID = 'default-hackathon'
 const IMPACT_AI_HACKATHON_ID = 'impact-ai-weekend-2026'
 const CAMPUS_HACKATHON_ID = 'campus-innovation-challenge-2026'
@@ -410,6 +414,17 @@ function submissionChanged(a: Submission, b: Submission) {
 
 function RequireAuth({ user, children }: { user: User | null; children: React.ReactNode }) {
   if (!user) return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
+function RequireAdminAuth({
+  isAdminAuthenticated,
+  children,
+}: {
+  isAdminAuthenticated: boolean
+  children: React.ReactNode
+}) {
+  if (!isAdminAuthenticated) return <Navigate to="/admin-login" replace />
   return <>{children}</>
 }
 
@@ -957,12 +972,34 @@ function NewSubmissionPage({
 function App() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [hackathons, setHackathons] = useState<Hackathon[]>([])
+  const [selectedHackathonId, setSelectedHackathonId] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem(SELECTED_HACKATHON_STORAGE_KEY)
+      return stored && stored.trim().length > 0 ? stored : 'all'
+    } catch {
+      return 'all'
+    }
+  })
   const [hasLoadedHackathons, setHasLoadedHackathons] = useState(false)
   const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
   const [user, setUser] = useState<User | null>(null)
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === 'true'
+    } catch {
+      return false
+    }
+  })
   const prevSubmissionsRef = useRef<Map<string, Submission> | null>(null)
   const prevHackathonsRef = useRef<Map<string, Hackathon> | null>(null)
+  const visibleSubmissions = useMemo(
+    () =>
+      selectedHackathonId === 'all'
+        ? submissions
+        : submissions.filter((submission) => submission.hackathonId === selectedHackathonId),
+    [selectedHackathonId, submissions],
+  )
 
   useEffect(() => {
     if (!supabase) return
@@ -1110,6 +1147,28 @@ function App() {
   }, [hackathons, hasLoadedHackathons])
 
   useEffect(() => {
+    if (selectedHackathonId === 'all') return
+    if (hackathons.some((hackathon) => hackathon.id === selectedHackathonId)) return
+    setSelectedHackathonId('all')
+  }, [hackathons, selectedHackathonId])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SELECTED_HACKATHON_STORAGE_KEY, selectedHackathonId)
+    } catch {
+      // ignore storage quota / disabled storage
+    }
+  }, [selectedHackathonId])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, String(isAdminAuthenticated))
+    } catch {
+      // ignore storage quota / disabled storage
+    }
+  }, [isAdminAuthenticated])
+
+  useEffect(() => {
     if (!isSupabaseConfigured || !hasLoadedFromDb) return
 
     const prev = prevSubmissionsRef.current ?? new Map<string, Submission>()
@@ -1179,13 +1238,36 @@ function App() {
         )}
         <Routes>
           <Route path="/" element={user ? <Navigate to="/home" replace /> : <LandingPage />} />
+          <Route
+            path="/admin-login"
+            element={
+              isAdminAuthenticated ? (
+                <Navigate to="/admin-dashboard" replace />
+              ) : (
+                <AdminLoginPage onAuthenticated={() => setIsAdminAuthenticated(true)} />
+              )
+            }
+          />
+          <Route
+            path="/admin-dashboard"
+            element={
+              <RequireAdminAuth isAdminAuthenticated={isAdminAuthenticated}>
+                <AdminDashboardPage onSignOut={() => setIsAdminAuthenticated(false)} />
+              </RequireAdminAuth>
+            }
+          />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/signup" element={<Navigate to="/" replace />} />
           <Route
             path="/home"
             element={
               <RequireAuth user={user}>
-                <SubmissionsPage submissions={submissions} />
+                <SubmissionsPage
+                  submissions={visibleSubmissions}
+                  hackathons={hackathons}
+                  selectedHackathonId={selectedHackathonId}
+                  onSelectedHackathonChange={setSelectedHackathonId}
+                />
               </RequireAuth>
             }
           />
