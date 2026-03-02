@@ -6,6 +6,8 @@ import * as db from './lib/db'
 import type { User } from '@supabase/supabase-js'
 import ProfilePage from './pages/ProfilePage'
 import LandingPage from './pages/LandingPage'
+import AdminLoginPage from './pages/AdminLoginPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
 
 export type Submission = {
   id: string
@@ -33,6 +35,9 @@ export type Hackathon = {
 
 const STORAGE_KEY = 'aoai.submissions.v1'
 const HACKATHON_STORAGE_KEY = 'aoai.hackathons.v1'
+const SELECTED_HACKATHON_STORAGE_KEY = 'aoai.selectedHackathon.v1'
+const ADMIN_AUTH_STORAGE_KEY = 'aoai.adminAuthenticated.v1'
+const USER_VOTES_STORAGE_KEY = 'aoai.userVotes.v1'
 const DEFAULT_HACKATHON_ID = 'default-hackathon'
 const IMPACT_AI_HACKATHON_ID = 'impact-ai-weekend-2026'
 const CAMPUS_HACKATHON_ID = 'campus-innovation-challenge-2026'
@@ -353,6 +358,41 @@ function getHackathons() {
   return seeded
 }
 
+function getLocalUserVotesStore() {
+  try {
+    const raw = localStorage.getItem(USER_VOTES_STORAGE_KEY)
+    if (!raw) return {} as Record<string, string[]>
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {} as Record<string, string[]>
+
+    const normalized: Record<string, string[]> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!Array.isArray(value)) continue
+      normalized[key] = value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    }
+    return normalized
+  } catch {
+    return {} as Record<string, string[]>
+  }
+}
+
+function getUserVotedSubmissionIds(userId: string | null) {
+  if (!userId) return new Set<string>()
+  const store = getLocalUserVotesStore()
+  return new Set(store[userId] ?? [])
+}
+
+function saveUserVotedSubmissionIds(userId: string | null, votedSubmissionIds: Set<string>) {
+  if (!userId) return
+  try {
+    const store = getLocalUserVotesStore()
+    store[userId] = Array.from(votedSubmissionIds)
+    localStorage.setItem(USER_VOTES_STORAGE_KEY, JSON.stringify(store))
+  } catch {
+    // ignore storage quota / disabled storage
+  }
+}
+
 function normalizeStoredSubmission(value: unknown): Submission | null {
   if (!value || typeof value !== 'object') return null
   const submission = value as Partial<Submission>
@@ -413,6 +453,17 @@ function RequireAuth({ user, children }: { user: User | null; children: React.Re
   return <>{children}</>
 }
 
+function RequireAdminAuth({
+  isAdminAuthenticated,
+  children,
+}: {
+  isAdminAuthenticated: boolean
+  children: React.ReactNode
+}) {
+  if (!isAdminAuthenticated) return <Navigate to="/admin-login" replace />
+  return <>{children}</>
+}
+
 function HeaderNav({ user }: { user: User | null }) {
   const location = useLocation()
   const onSubmitPage = location.pathname === '/submit'
@@ -423,9 +474,6 @@ function HeaderNav({ user }: { user: User | null }) {
       <div className="headerInner">
         <div className="brand">
           <div className="brandMarks">
-            <div className="brandMark">
-              <img className="brandLogo" src="/assets/aoai-logo.png" alt="AOAI logo" />
-            </div>
             <div className="brandMark">
               <img className="brandLogo brandLogoCnb" src="/assets/chatandbuild-logo.jpg" alt="ChatAndBuild logo" />
             </div>
@@ -490,14 +538,48 @@ function HeaderNav({ user }: { user: User | null }) {
   )
 }
 
-function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
-  const featured = submissions.slice(0, 3)
+function SubmissionsPage({
+  submissions,
+  hackathons,
+  selectedHackathonId,
+  onSelectedHackathonChange,
+  onVote,
+  votingSubmissionIds,
+  votedSubmissionIds,
+}: {
+  submissions: Submission[]
+  hackathons: Hackathon[]
+  selectedHackathonId: string
+  onSelectedHackathonChange: (hackathonId: string) => void
+  onVote: (submissionId: string) => void
+  votingSubmissionIds: ReadonlySet<string>
+  votedSubmissionIds: ReadonlySet<string>
+}) {
+  const featured = useMemo(() => {
+    return [...submissions]
+      .sort((a, b) => {
+        const voteDelta = b.votes - a.votes
+        if (voteDelta !== 0) return voteDelta
+        const createdAtDelta = Date.parse(b.createdAt) - Date.parse(a.createdAt)
+        if (Number.isFinite(createdAtDelta) && createdAtDelta !== 0) return createdAtDelta
+        return a.id.localeCompare(b.id)
+      })
+      .slice(0, 3)
+  }, [submissions])
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [carouselNonce, setCarouselNonce] = useState(0)
+  const selectedHackathonName = useMemo(() => {
+    if (selectedHackathonId === 'all') return 'All hackathons'
+    return hackathons.find((hackathon) => hackathon.id === selectedHackathonId)?.name ?? 'All hackathons'
+  }, [hackathons, selectedHackathonId])
+  const featuredSignature = useMemo(
+    () => featured.map((submission) => `${submission.id}:${submission.votes}`).join('|'),
+    [featured],
+  )
 
   useEffect(() => {
     setFeaturedIndex(0)
-  }, [featured.length])
+  }, [featuredSignature])
 
   useEffect(() => {
     if (featured.length <= 1) return
@@ -517,10 +599,26 @@ function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
       <section className="card">
         <div className="listHeader">
           <h2 className="cardTitle cardTitleHero">Featured submissions</h2>
-          <div className="pill" aria-label={`${featured.length} featured submissions`}>
-            {featured.length}
+          <div className="helpRow">
+            <label className="helpText" htmlFor="homeHackathonFilter">
+              Hackathon
+            </label>
+            <select
+              id="homeHackathonFilter"
+              value={selectedHackathonId}
+              onChange={(e) => onSelectedHackathonChange(e.target.value)}
+              aria-label="Filter submissions by hackathon"
+            >
+              <option value="all">All hackathons</option>
+              {hackathons.map((hackathon) => (
+                <option key={hackathon.id} value={hackathon.id}>
+                  {hackathon.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
+        <p className="cardHint">Showing: {selectedHackathonName}</p>
 
         {submissions.length === 0 ? (
           <div className="empty">No submissions yet. Use “New submission” to add the first one.</div>
@@ -549,11 +647,25 @@ function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
                             <time className="metaItem" dateTime={s.createdAt}>
                               {new Date(s.createdAt).toLocaleString()}
                             </time>
+                            <span className="metaDot" aria-hidden="true">
+                              ·
+                            </span>
+                            <span className="metaItem">{s.votes} votes</span>
                           </div>
                         </div>
-                        <a className="link" href={s.appLink} target="_blank" rel="noopener noreferrer">
-                          Open app
-                        </a>
+                        <div className="submissionActions">
+                          <button
+                            className="btn btnGhost voteButton"
+                            type="button"
+                            onClick={() => onVote(s.id)}
+                            disabled={votingSubmissionIds.has(s.id) || votedSubmissionIds.has(s.id)}
+                          >
+                            {votingSubmissionIds.has(s.id) ? 'Voting...' : votedSubmissionIds.has(s.id) ? 'Voted' : 'Vote'}
+                          </button>
+                          <a className="link" href={s.appLink} target="_blank" rel="noopener noreferrer">
+                            Open app
+                          </a>
+                        </div>
                       </div>
 
                       <a
@@ -631,38 +743,54 @@ function SubmissionsPage({ submissions }: { submissions: Submission[] }) {
         ) : (
           <div className="compactList" role="list">
             {submissions.map((s) => (
-            <a
-              className="compactCard"
-              role="listitem"
-              key={`compact_${s.id}`}
-              href={s.appLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Open ${s.appName} by ${s.participantName}`}
-            >
-              <div className="compactTop">
-                <div className="compactMain">
-                  <div className="compactTitle">{s.appName}</div>
-                  <div className="compactMeta">
-                    <span className="compactBy">by {s.participantName}</span>
+              <article className="compactCard" role="listitem" key={`compact_${s.id}`}>
+                <div className="compactTop">
+                  <div className="compactMain">
+                    <div className="compactTitle">{s.appName}</div>
+                    <div className="compactMeta">
+                      <span className="compactBy">by {s.participantName}</span>
+                    </div>
                   </div>
+                  <a
+                    className="compactAction"
+                    href={s.appLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Open ${s.appName} by ${s.participantName}`}
+                  >
+                    Open app
+                  </a>
                 </div>
-                <div className="compactAction" aria-hidden="true">
-                  View
-                </div>
-              </div>
 
-              <div className="thumb thumbCompact">
-                <img
-                  className="thumbImg"
-                  src={screenshotUrl(s.appLink, { width: 1200, height: 800 })}
-                  alt={`${s.appName} homepage screenshot`}
-                  loading="lazy"
-                  decoding="async"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            </a>
+                <a
+                  className="thumb thumbCompact"
+                  href={s.appLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`View ${s.appName} preview`}
+                >
+                  <img
+                    className="thumbImg"
+                    src={screenshotUrl(s.appLink, { width: 1200, height: 800 })}
+                    alt={`${s.appName} homepage screenshot`}
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                  />
+                </a>
+
+                <div className="compactFooter">
+                  <span className="compactVotes">{s.votes} votes</span>
+                  <button
+                    className="btn btnGhost compactVoteButton"
+                    type="button"
+                    onClick={() => onVote(s.id)}
+                    disabled={votingSubmissionIds.has(s.id) || votedSubmissionIds.has(s.id)}
+                  >
+                    {votingSubmissionIds.has(s.id) ? 'Voting...' : votedSubmissionIds.has(s.id) ? 'Voted' : 'Vote'}
+                  </button>
+                </div>
+              </article>
             ))}
           </div>
         )}
@@ -957,12 +1085,122 @@ function NewSubmissionPage({
 function App() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [hackathons, setHackathons] = useState<Hackathon[]>([])
+  const [selectedHackathonId, setSelectedHackathonId] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem(SELECTED_HACKATHON_STORAGE_KEY)
+      return stored && stored.trim().length > 0 ? stored : 'all'
+    } catch {
+      return 'all'
+    }
+  })
   const [hasLoadedHackathons, setHasLoadedHackathons] = useState(false)
   const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
   const [user, setUser] = useState<User | null>(null)
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === 'true'
+    } catch {
+      return false
+    }
+  })
+  const [votingSubmissionIds, setVotingSubmissionIds] = useState<Set<string>>(new Set())
+  const [votedSubmissionIds, setVotedSubmissionIds] = useState<Set<string>>(new Set())
   const prevSubmissionsRef = useRef<Map<string, Submission> | null>(null)
   const prevHackathonsRef = useRef<Map<string, Hackathon> | null>(null)
+  const votingSubmissionIdsRef = useRef<Set<string>>(new Set())
+  const votedSubmissionIdsRef = useRef<Set<string>>(new Set())
+  const visibleSubmissions = useMemo(
+    () =>
+      selectedHackathonId === 'all'
+        ? submissions
+        : submissions.filter((submission) => submission.hackathonId === selectedHackathonId),
+    [selectedHackathonId, submissions],
+  )
+
+  function setSubmissionVoting(submissionId: string, isVoting: boolean) {
+    if (isVoting) votingSubmissionIdsRef.current.add(submissionId)
+    else votingSubmissionIdsRef.current.delete(submissionId)
+    setVotingSubmissionIds(new Set(votingSubmissionIdsRef.current))
+  }
+
+  function setLoadedVotedSubmissionIds(nextVotedSubmissionIds: Set<string>) {
+    votedSubmissionIdsRef.current = nextVotedSubmissionIds
+    setVotedSubmissionIds(nextVotedSubmissionIds)
+  }
+
+  function markSubmissionAsVoted(submissionId: string) {
+    if (votedSubmissionIdsRef.current.has(submissionId)) return
+    const next = new Set(votedSubmissionIdsRef.current)
+    next.add(submissionId)
+    setLoadedVotedSubmissionIds(next)
+  }
+
+  async function handleVote(submissionId: string) {
+    if (votingSubmissionIdsRef.current.has(submissionId) || votedSubmissionIdsRef.current.has(submissionId)) return
+
+    if (isSupabaseConfigured && hasLoadedFromDb && user?.id) {
+      setSubmissionVoting(submissionId, true)
+      try {
+        const voteResult = await db.incrementSubmissionVotes(submissionId)
+        setSubmissions((prev) =>
+          prev.map((submission) =>
+            submission.id === submissionId ? { ...submission, votes: voteResult.votes } : submission,
+          ),
+        )
+        markSubmissionAsVoted(submissionId)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setSubmissionVoting(submissionId, false)
+      }
+      return
+    }
+
+    setSubmissions((prev) =>
+      prev.map((submission) =>
+        submission.id === submissionId ? { ...submission, votes: submission.votes + 1 } : submission,
+      ),
+    )
+    markSubmissionAsVoted(submissionId)
+  }
+
+  useEffect(() => {
+    if (!user?.id) {
+      setLoadedVotedSubmissionIds(new Set())
+      return
+    }
+
+    if (!isSupabaseConfigured) {
+      setLoadedVotedSubmissionIds(getUserVotedSubmissionIds(user.id))
+      return
+    }
+
+    if (!hasLoadedFromDb) return
+
+    let cancelled = false
+    void db
+      .listCurrentUserVotedSubmissionIds()
+      .then((votedSubmissionIdsList) => {
+        if (cancelled) return
+        setLoadedVotedSubmissionIds(new Set(votedSubmissionIdsList))
+      })
+      .catch((err) => {
+        console.error(err)
+        if (cancelled) return
+        setLoadedVotedSubmissionIds(getUserVotedSubmissionIds(user.id))
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [hasLoadedFromDb, user?.id])
+
+  useEffect(() => {
+    if (!user?.id) return
+    if (isSupabaseConfigured) return
+    saveUserVotedSubmissionIds(user.id, votedSubmissionIds)
+  }, [user?.id, votedSubmissionIds])
 
   useEffect(() => {
     if (!supabase) return
@@ -1110,6 +1348,28 @@ function App() {
   }, [hackathons, hasLoadedHackathons])
 
   useEffect(() => {
+    if (selectedHackathonId === 'all') return
+    if (hackathons.some((hackathon) => hackathon.id === selectedHackathonId)) return
+    setSelectedHackathonId('all')
+  }, [hackathons, selectedHackathonId])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SELECTED_HACKATHON_STORAGE_KEY, selectedHackathonId)
+    } catch {
+      // ignore storage quota / disabled storage
+    }
+  }, [selectedHackathonId])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, String(isAdminAuthenticated))
+    } catch {
+      // ignore storage quota / disabled storage
+    }
+  }, [isAdminAuthenticated])
+
+  useEffect(() => {
     if (!isSupabaseConfigured || !hasLoadedFromDb) return
 
     const prev = prevSubmissionsRef.current ?? new Map<string, Submission>()
@@ -1179,13 +1439,39 @@ function App() {
         )}
         <Routes>
           <Route path="/" element={user ? <Navigate to="/home" replace /> : <LandingPage />} />
+          <Route
+            path="/admin-login"
+            element={
+              isAdminAuthenticated ? (
+                <Navigate to="/admin-dashboard" replace />
+              ) : (
+                <AdminLoginPage onAuthenticated={() => setIsAdminAuthenticated(true)} />
+              )
+            }
+          />
+          <Route
+            path="/admin-dashboard"
+            element={
+              <RequireAdminAuth isAdminAuthenticated={isAdminAuthenticated}>
+                <AdminDashboardPage onSignOut={() => setIsAdminAuthenticated(false)} />
+              </RequireAdminAuth>
+            }
+          />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/signup" element={<Navigate to="/" replace />} />
           <Route
             path="/home"
             element={
               <RequireAuth user={user}>
-                <SubmissionsPage submissions={submissions} />
+                <SubmissionsPage
+                  submissions={visibleSubmissions}
+                  hackathons={hackathons}
+                  selectedHackathonId={selectedHackathonId}
+                  onSelectedHackathonChange={setSelectedHackathonId}
+                  onVote={handleVote}
+                  votingSubmissionIds={votingSubmissionIds}
+                  votedSubmissionIds={votedSubmissionIds}
+                />
               </RequireAuth>
             }
           />

@@ -23,6 +23,10 @@ type DbSubmissionRow = {
   user_id: string | null
 }
 
+type DbSubmissionVoteRow = {
+  submission_id: string
+}
+
 function fromDbHackathon(row: DbHackathonRow): Hackathon {
   return {
     id: row.id,
@@ -122,5 +126,42 @@ export async function deleteSubmissions(ids: string[]): Promise<void> {
   const client = requireClient()
   const { error } = await client.from('submissions').delete().in('id', ids)
   if (error) throw error
+}
+
+export async function incrementSubmissionVotes(
+  submissionId: string,
+): Promise<{
+  votes: number
+  applied: boolean
+}> {
+  const client = requireClient()
+  const { data, error } = await client.rpc('increment_submission_votes', { p_submission_id: submissionId })
+  if (error) throw error
+
+  // Backward compatibility: older SQL returned a bare integer.
+  if (typeof data === 'number' && Number.isFinite(data)) {
+    return { votes: data, applied: true }
+  }
+
+  const payload = Array.isArray(data) ? data[0] : data
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('increment_submission_votes returned an invalid payload.')
+  }
+
+  const parsed = payload as { votes?: unknown; applied?: unknown }
+  if (typeof parsed.votes !== 'number' || !Number.isFinite(parsed.votes) || typeof parsed.applied !== 'boolean') {
+    throw new Error('increment_submission_votes returned malformed result fields.')
+  }
+
+  return { votes: parsed.votes, applied: parsed.applied }
+}
+
+export async function listCurrentUserVotedSubmissionIds(): Promise<string[]> {
+  const client = requireClient()
+  const { data, error } = await client.from('submission_votes').select('submission_id')
+  if (error) throw error
+  return (data as DbSubmissionVoteRow[])
+    .map((row) => row.submission_id)
+    .filter((submissionId): submissionId is string => typeof submissionId === 'string' && submissionId.length > 0)
 }
 
