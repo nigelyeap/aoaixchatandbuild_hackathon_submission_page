@@ -18,6 +18,10 @@ This app can run **without** Supabase (local-only), but to share submissions acr
 - Create a Supabase project
 - In the Supabase SQL editor, run:
   - `supabase/schema.sql`
+  - `supabase/auth_profiles.sql`
+  - `supabase/voting.sql`
+
+`supabase/voting.sql` adds the `increment_submission_votes(...)` RPC and `submission_votes` table so votes are atomic, shared across users, and limited to one vote per user per project.
 
 ### 2) Add environment variables
 
