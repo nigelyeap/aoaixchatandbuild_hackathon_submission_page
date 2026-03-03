@@ -42,7 +42,19 @@
   }
 
   .headerBack {
-    @apply absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30;
+    @apply absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-30;
+  }
+
+  .btn.headerBack {
+    @apply h-10 w-10 min-w-10 rounded-full px-0;
+  }
+
+  .headerBackIcon {
+    @apply h-5 w-5 block;
+  }
+
+  .btn.headerBack:active {
+    transform: translateY(-50%);
   }
 
   .brand {
@@ -151,11 +163,7 @@
   }
 
   .btn {
-<<<<<<< HEAD
     @apply inline-flex h-12 items-center justify-center whitespace-nowrap rounded-2xl px-5 text-base font-extrabold text-white bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_12px_30px_rgba(124,58,237,0.25)] ring-1 ring-white/10 hover:from-violet-500 hover:to-indigo-500 active:translate-y-[1px] transition;
-=======
-    @apply inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-2xl px-5 py-3 text-base font-extrabold text-white bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_12px_30px_rgba(124,58,237,0.25)] ring-1 ring-white/10 hover:from-violet-500 hover:to-indigo-500 active:translate-y-[1px] transition;
->>>>>>> 92595c06166f3b12cd8c1df4c6e8f834ae822a75
   }
 
   .btn:disabled {
@@ -364,12 +372,24 @@
     @apply text-3xl sm:text-4xl font-black tracking-tight;
   }
 
+  .hackathonHeroLogoWrap {
+    @apply mb-4 h-14 w-14 rounded-2xl bg-white/10 ring-1 ring-white/20 overflow-hidden grid place-items-center;
+  }
+
+  .hackathonHeroLogo {
+    @apply h-full w-full object-contain p-2;
+  }
+
   .hackathonHeroMeta {
     @apply mt-3 text-base text-slate-200/90 font-semibold flex flex-wrap gap-3 items-center;
   }
 
   .hackathonHeroAction {
     @apply inline-flex h-12 items-center justify-center rounded-2xl px-6 text-base font-extrabold bg-white/5 border border-white/15 text-slate-100;
+  }
+
+  .adminLogoPreview {
+    @apply h-16 w-16 rounded-2xl bg-white/10 ring-1 ring-white/20 object-contain p-2;
   }
 }
 

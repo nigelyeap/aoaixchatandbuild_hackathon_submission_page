@@ -6,14 +6,11 @@ import * as db from './lib/db'
 import type { User } from '@supabase/supabase-js'
 import ProfilePage from './pages/ProfilePage'
 import LandingPage from './pages/LandingPage'
-<<<<<<< HEAD
 import HackathonSelectPage from './pages/HackathonSelectPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
-=======
 import AdminLoginPage from './pages/AdminLoginPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
->>>>>>> 92595c06166f3b12cd8c1df4c6e8f834ae822a75
 
 export type Submission = {
   id: string
@@ -33,6 +30,7 @@ type FormState = Omit<Submission, 'id' | 'createdAt' | 'votes' | 'userId'>
 export type Hackathon = {
   id: string
   name: string
+  logoUrl?: string
   acceptingSubmissions: boolean
   startsAt: string
   endsAt: string
@@ -41,17 +39,10 @@ export type Hackathon = {
 
 const STORAGE_KEY = 'aoai.submissions.v1'
 const HACKATHON_STORAGE_KEY = 'aoai.hackathons.v1'
-<<<<<<< HEAD
-const SELECTED_HACKATHON_KEY = 'aoai.selected_hackathon.v1'
-const DEFAULT_HACKATHON_ID = 'aoai-chatandbuild-hackathon'
-=======
 const SELECTED_HACKATHON_STORAGE_KEY = 'aoai.selectedHackathon.v1'
 const ADMIN_AUTH_STORAGE_KEY = 'aoai.adminAuthenticated.v1'
 const USER_VOTES_STORAGE_KEY = 'aoai.userVotes.v1'
-const DEFAULT_HACKATHON_ID = 'default-hackathon'
-const IMPACT_AI_HACKATHON_ID = 'impact-ai-weekend-2026'
-const CAMPUS_HACKATHON_ID = 'campus-innovation-challenge-2026'
->>>>>>> 92595c06166f3b12cd8c1df4c6e8f834ae822a75
+const DEFAULT_HACKATHON_ID = 'aoai-chatandbuild-hackathon'
 const SEED_NUMEROLOGY_LINK = 'https://numerology-app-with-1762069380857.chatand.build/'
 const SEED_STUDY_BUDDY_LINK = 'https://study-buddy-ai.chatand.build/'
 const SEED_FOOD_WASTE_LINK = 'https://smart-food-rescue.chatand.build/'
@@ -227,6 +218,12 @@ function normalizeUrl(value: string) {
   return `https://${raw}`
 }
 
+function normalizeHackathonLogoUrl(value: unknown) {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
 function validate(state: FormState, acceptingHackathons: Hackathon[]) {
   const errors: Partial<Record<keyof FormState, string>> = {}
 
@@ -307,6 +304,7 @@ function normalizeStoredHackathon(value: unknown): Hackathon | null {
   return {
     id: hackathon.id,
     name: hackathon.name,
+    logoUrl: normalizeHackathonLogoUrl((hackathon as { logoUrl?: unknown }).logoUrl),
     acceptingSubmissions: hackathon.acceptingSubmissions,
     startsAt,
     endsAt,
@@ -325,6 +323,7 @@ function defaultHackathon(): Hackathon {
   return {
     id: DEFAULT_HACKATHON_ID,
     name: 'AOAI x ChatAndBuild Hackathon',
+    logoUrl: '/assets/aoai-logo.png',
     acceptingSubmissions: true,
     startsAt: '2026-02-20T09:00:00.000Z',
     endsAt: '2026-03-20T23:59:59.000Z',
@@ -360,8 +359,16 @@ function getHackathons() {
 
         const migrated = normalized.map((hackathon) => {
           const seededHackathon = seededById.get(hackathon.id)
-          if (!seededHackathon || hackathon.name === seededHackathon.name) return hackathon
-          return { ...hackathon, name: seededHackathon.name }
+          if (!seededHackathon) return hackathon
+
+          const nextLogoUrl = hackathon.logoUrl ?? seededHackathon.logoUrl
+          if (hackathon.name === seededHackathon.name && nextLogoUrl === hackathon.logoUrl) return hackathon
+
+          return {
+            ...hackathon,
+            name: seededHackathon.name,
+            logoUrl: nextLogoUrl,
+          }
         })
 
         const existingIds = new Set(migrated.map((hackathon) => hackathon.id))
@@ -446,6 +453,7 @@ function normalizeStoredSubmission(value: unknown): Submission | null {
 function hackathonChanged(a: Hackathon, b: Hackathon) {
   return (
     a.name !== b.name ||
+    a.logoUrl !== b.logoUrl ||
     a.acceptingSubmissions !== b.acceptingSubmissions ||
     a.startsAt !== b.startsAt ||
     a.endsAt !== b.endsAt ||
@@ -471,22 +479,6 @@ function RequireAuth({ user, children }: { user: User | null; children: React.Re
   return <>{children}</>
 }
 
-<<<<<<< HEAD
-function RequireHackathon({
-  selectedHackathonId,
-  children,
-}: {
-  selectedHackathonId: string | null
-  children: React.ReactNode
-}) {
-  if (!selectedHackathonId) return <Navigate to="/hackathons" replace />
-  return <>{children}</>
-}
-
-type HeaderVariant = 'full' | 'hackathon'
-
-function HeaderNav({ user, variant }: { user: User | null; variant: HeaderVariant }) {
-=======
 function RequireAdminAuth({
   isAdminAuthenticated,
   children,
@@ -498,32 +490,51 @@ function RequireAdminAuth({
   return <>{children}</>
 }
 
-function HeaderNav({ user }: { user: User | null }) {
->>>>>>> 92595c06166f3b12cd8c1df4c6e8f834ae822a75
+type HeaderVariant = 'full' | 'hackathon'
+
+function HeaderNav({
+  user,
+  variant,
+  hackathonLogoUrl,
+  hackathonName,
+}: {
+  user: User | null
+  variant: HeaderVariant
+  hackathonLogoUrl?: string | null
+  hackathonName?: string | null
+}) {
   const location = useLocation()
   const onSubmitPage = location.pathname === '/submit'
   const onAdminPage = location.pathname === '/admin'
   const onHackathonsPage = location.pathname === '/hackathons'
   const showBack = Boolean(user && variant === 'full' && !onHackathonsPage && !onAdminPage)
+  const normalizedHackathonLogoUrl = hackathonLogoUrl?.trim() ?? ''
+  const showHackathonLogo = normalizedHackathonLogoUrl.length > 0
 
   return (
     <header className="header">
       {showBack && (
-        <Link className="btn btnGhost headerBack" to="/hackathons">
-          Back to hackathons
+        <Link className="btn btnGhost headerBack" to="/hackathons" aria-label="Back to hackathons" title="Back to hackathons">
+          <svg
+            aria-hidden="true"
+            className="headerBackIcon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M20 12H5" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round" />
+            <path d="M11 6L5 12L11 18" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </Link>
       )}
       <div className="headerInner">
         <div className="brand">
           <div className="brandMarks">
-<<<<<<< HEAD
-            {variant === 'full' && (
+            {showHackathonLogo && (
               <div className="brandMark">
-                <img className="brandLogo" src="/assets/aoai-logo.png" alt="AOAI logo" />
+                <img className="brandLogo" src={normalizedHackathonLogoUrl} alt={`${hackathonName ?? 'Hackathon'} logo`} />
               </div>
             )}
-=======
->>>>>>> 92595c06166f3b12cd8c1df4c6e8f834ae822a75
             <div className="brandMark">
               <img className="brandLogo brandLogoCnb" src="/assets/chatandbuild-logo.jpg" alt="ChatAndBuild logo" />
             </div>
@@ -535,7 +546,7 @@ function HeaderNav({ user }: { user: User | null }) {
               </h1>
             ) : (
               <>
-                {variant === 'full' && <div className="titleLead">AOAI x ChatandBuild</div>}
+                {variant === 'full' && <div className="titleLead">{hackathonName ?? 'ChatAndBuild'}</div>}
                 <h1 className="title">ChatAndBuild Hackathon Submission Portal</h1>
                 <p className="subtitle">
                   {variant === 'hackathon' ? 'Choose a hackathon to continue.' : 'Browse submissions or add a new one.'}
@@ -608,7 +619,7 @@ function SubmissionsPage({
   votingSubmissionIds: ReadonlySet<string>
   votedSubmissionIds: ReadonlySet<string>
 }) {
-  const featured = useMemo(() => {
+  const sortedSubmissions = useMemo(() => {
     return [...submissions]
       .sort((a, b) => {
         const voteDelta = b.votes - a.votes
@@ -617,8 +628,11 @@ function SubmissionsPage({
         if (Number.isFinite(createdAtDelta) && createdAtDelta !== 0) return createdAtDelta
         return a.id.localeCompare(b.id)
       })
-      .slice(0, 3)
   }, [submissions])
+  const featured = useMemo(() => {
+    return sortedSubmissions
+      .slice(0, 3)
+  }, [sortedSubmissions])
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [carouselNonce, setCarouselNonce] = useState(0)
   const selectedHackathonName = useMemo(() => {
@@ -795,7 +809,7 @@ function SubmissionsPage({
           <div className="empty">Nothing here yet.</div>
         ) : (
           <div className="compactList" role="list">
-            {submissions.map((s) => (
+            {sortedSubmissions.map((s) => (
               <article className="compactCard" role="listitem" key={`compact_${s.id}`}>
                 <div className="compactTop">
                   <div className="compactMain">
@@ -1139,9 +1153,6 @@ function App() {
   const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
   const [user, setUser] = useState<User | null>(null)
-<<<<<<< HEAD
-  const [selectedHackathonId, setSelectedHackathonId] = useState<string | null>(null)
-=======
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     try {
       return localStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === 'true'
@@ -1151,7 +1162,6 @@ function App() {
   })
   const [votingSubmissionIds, setVotingSubmissionIds] = useState<Set<string>>(new Set())
   const [votedSubmissionIds, setVotedSubmissionIds] = useState<Set<string>>(new Set())
->>>>>>> 92595c06166f3b12cd8c1df4c6e8f834ae822a75
   const prevSubmissionsRef = useRef<Map<string, Submission> | null>(null)
   const prevHackathonsRef = useRef<Map<string, Hackathon> | null>(null)
   const votingSubmissionIdsRef = useRef<Set<string>>(new Set())
@@ -1163,6 +1173,12 @@ function App() {
         : submissions.filter((submission) => submission.hackathonId === selectedHackathonId),
     [selectedHackathonId, submissions],
   )
+  const headerHackathon = useMemo(() => {
+    const hackathonIdForHeader =
+      location.pathname === '/submit' && selectedHackathonId === 'all' ? DEFAULT_HACKATHON_ID : selectedHackathonId
+    if (hackathonIdForHeader === 'all') return null
+    return hackathons.find((hackathon) => hackathon.id === hackathonIdForHeader) ?? null
+  }, [hackathons, location.pathname, selectedHackathonId])
 
   function setSubmissionVoting(submissionId: string, isVoting: boolean) {
     if (isVoting) votingSubmissionIdsRef.current.add(submissionId)
@@ -1267,36 +1283,6 @@ function App() {
       sub.subscription.unsubscribe()
     }
   }, [])
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SELECTED_HACKATHON_KEY)
-      if (raw && raw.trim().length > 0) setSelectedHackathonId(raw)
-    } catch {
-      // ignore
-    }
-  }, [])
-
-  useEffect(() => {
-    if (selectedHackathonId) return
-    if (hackathons.length === 0) return
-    const nowMs = Date.now()
-    const preferred = hackathons.find((h) => h.id === DEFAULT_HACKATHON_ID) ?? null
-    const open = hackathons.find((h) => isHackathonOpen(h, nowMs)) ?? null
-    setSelectedHackathonId(preferred?.id ?? open?.id ?? hackathons[0].id)
-  }, [hackathons, selectedHackathonId])
-
-  useEffect(() => {
-    try {
-      if (!selectedHackathonId) {
-        localStorage.removeItem(SELECTED_HACKATHON_KEY)
-      } else {
-        localStorage.setItem(SELECTED_HACKATHON_KEY, selectedHackathonId)
-      }
-    } catch {
-      // ignore
-    }
-  }, [selectedHackathonId])
 
   useEffect(() => {
     let cancelled = false
@@ -1506,7 +1492,12 @@ function App() {
   return (
     <div className="page">
       {user ? (
-        <HeaderNav user={user} variant={location.pathname === '/hackathons' ? 'hackathon' : 'full'} />
+        <HeaderNav
+          user={user}
+          variant={location.pathname === '/hackathons' ? 'hackathon' : 'full'}
+          hackathonLogoUrl={headerHackathon?.logoUrl ?? null}
+          hackathonName={headerHackathon?.name ?? null}
+        />
       ) : null}
 
       <main className="content">
@@ -1516,10 +1507,7 @@ function App() {
           </div>
         )}
         <Routes>
-<<<<<<< HEAD
           <Route path="/" element={user ? <Navigate to="/hackathons" replace /> : <LandingPage />} />
-=======
-          <Route path="/" element={user ? <Navigate to="/home" replace /> : <LandingPage />} />
           <Route
             path="/admin-login"
             element={
@@ -1538,7 +1526,6 @@ function App() {
               </RequireAdminAuth>
             }
           />
->>>>>>> 92595c06166f3b12cd8c1df4c6e8f834ae822a75
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/signup" element={<Navigate to="/" replace />} />
           <Route path="/forgot" element={<ForgotPasswordPage />} />
@@ -1559,11 +1546,6 @@ function App() {
             path="/home"
             element={
               <RequireAuth user={user}>
-<<<<<<< HEAD
-                <RequireHackathon selectedHackathonId={selectedHackathonId}>
-                  <SubmissionsPage submissions={submissions.filter((s) => s.hackathonId === selectedHackathonId)} />
-                </RequireHackathon>
-=======
                 <SubmissionsPage
                   submissions={visibleSubmissions}
                   hackathons={hackathons}
@@ -1573,7 +1555,6 @@ function App() {
                   votingSubmissionIds={votingSubmissionIds}
                   votedSubmissionIds={votedSubmissionIds}
                 />
->>>>>>> 92595c06166f3b12cd8c1df4c6e8f834ae822a75
               </RequireAuth>
             }
           />
@@ -1589,14 +1570,12 @@ function App() {
             path="/submit"
             element={
               <RequireAuth user={user}>
-                <RequireHackathon selectedHackathonId={selectedHackathonId}>
-                  <NewSubmissionPage
-                    onCreate={(s) => setSubmissions((prev) => [s, ...prev])}
-                    hackathons={hackathons}
-                    selectedHackathonId={selectedHackathonId ?? DEFAULT_HACKATHON_ID}
-                    currentUserId={user?.id ?? null}
-                  />
-                </RequireHackathon>
+                <NewSubmissionPage
+                  onCreate={(s) => setSubmissions((prev) => [s, ...prev])}
+                  hackathons={hackathons}
+                  selectedHackathonId={selectedHackathonId === 'all' ? DEFAULT_HACKATHON_ID : selectedHackathonId}
+                  currentUserId={user?.id ?? null}
+                />
               </RequireAuth>
             }
           />

@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Hackathon } from '../App'
 
@@ -27,14 +26,6 @@ export default function HackathonSelectPage({
 }) {
   const navigate = useNavigate()
 
-  const single = useMemo(() => {
-    const preferred =
-      hackathons.find((h) => h.name.trim().toLowerCase() === 'aoai x chatandbuild hackathon'.toLowerCase()) ??
-      hackathons[0] ??
-      null
-    return preferred
-  }, [hackathons])
-
   return (
     <section className="card">
       <div className="listHeader">
@@ -42,43 +33,51 @@ export default function HackathonSelectPage({
       </div>
       <p className="cardHint">Pick where you’re submitting. You can change this later.</p>
 
-      {!single ? (
+      {hackathons.length === 0 ? (
         <div className="empty">No hackathons available.</div>
       ) : (
-        <button
-          type="button"
-          className="hackathonHero"
-          onClick={() => {
-            onSelectHackathon(single.id)
-            navigate('/home')
-          }}
-        >
-          <div className="hackathonHeroTop">
-            <div>
-              <div className="hackathonHeroTitle">AOAI x ChatAndBuild Hackathon</div>
-              <div className="hackathonHeroMeta">
-                <span className={`statusTag ${isOpen(single) ? 'statusOpen' : 'statusClosed'}`}>
-                  {isOpen(single) ? 'Open' : 'Closed'}
-                </span>
-                <span className="metaDot" aria-hidden="true">
-                  ·
-                </span>
-                <span>{formatDateRange(single)}</span>
-                {selectedHackathonId === single.id && (
-                  <>
-                    <span className="metaDot" aria-hidden="true">
-                      ·
-                    </span>
-                    <span className="pill">Selected</span>
-                  </>
+        hackathons.map((hackathon) => (
+          <button
+            key={hackathon.id}
+            type="button"
+            className="hackathonHero"
+            onClick={() => {
+              onSelectHackathon(hackathon.id)
+              navigate('/home')
+            }}
+          >
+            <div className="hackathonHeroTop">
+              <div>
+                {hackathon.logoUrl && (
+                  <div className="hackathonHeroLogoWrap">
+                    <img className="hackathonHeroLogo" src={hackathon.logoUrl} alt={`${hackathon.name} logo`} />
+                  </div>
                 )}
+                <div className="hackathonHeroTitle">{hackathon.name}</div>
+                <div className="hackathonHeroMeta">
+                  <span className={`statusTag ${isOpen(hackathon) ? 'statusOpen' : 'statusClosed'}`}>
+                    {isOpen(hackathon) ? 'Open' : 'Closed'}
+                  </span>
+                  <span className="metaDot" aria-hidden="true">
+                    ·
+                  </span>
+                  <span>{formatDateRange(hackathon)}</span>
+                  {selectedHackathonId === hackathon.id && (
+                    <>
+                      <span className="metaDot" aria-hidden="true">
+                        ·
+                      </span>
+                      <span className="pill">Selected</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="hackathonHeroAction" aria-hidden="true">
+                Enter
               </div>
             </div>
-            <div className="hackathonHeroAction" aria-hidden="true">
-              Enter
-            </div>
-          </div>
-        </button>
+          </button>
+        ))
       )}
 
     </section>

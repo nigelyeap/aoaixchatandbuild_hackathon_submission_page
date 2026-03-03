@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { Hackathon, Submission } from './App'
 import { isSupabaseConfigured } from './lib/supabaseClient'
 import * as db from './lib/db'
@@ -51,6 +51,7 @@ function AdminPage({ submissions, setSubmissions, hackathons, setHackathons }: A
   const [isHackathonMenuOpen, setIsHackathonMenuOpen] = useState(false)
 
   const [name, setName] = useState('')
+  const [logoUrl, setLogoUrl] = useState('')
   const [acceptingSubmissions, setAcceptingSubmissions] = useState(true)
   const [startDateTime, setStartDateTime] = useState(() => toDateTimeLocalValue(new Date()))
   const [endDateTime, setEndDateTime] = useState(() =>
@@ -151,6 +152,7 @@ function AdminPage({ submissions, setSubmissions, hackathons, setHackathons }: A
     const newHackathon: Hackathon = {
       id: makeHackathonId(trimmedName),
       name: trimmedName,
+      logoUrl: logoUrl.trim() || undefined,
       acceptingSubmissions,
       startsAt: new Date(startDateTime).toISOString(),
       endsAt: new Date(endDateTime).toISOString(),
@@ -161,10 +163,35 @@ function AdminPage({ submissions, setSubmissions, hackathons, setHackathons }: A
     setSelectedHackathonId(newHackathon.id)
     setIsHackathonMenuOpen(false)
     setName('')
+    setLogoUrl('')
     setAcceptingSubmissions(true)
     setStartDateTime(toDateTimeLocalValue(new Date()))
     setEndDateTime(toDateTimeLocalValue(new Date(Date.now() + DEFAULT_HACKATHON_WINDOW_DAYS * 24 * 60 * 60 * 1000)))
     setCreateError('')
+  }
+
+  function handleLogoFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setCreateError('Please upload a valid image file for the logo.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const nextValue = typeof reader.result === 'string' ? reader.result : ''
+      if (!nextValue) {
+        setCreateError('Could not read the selected logo image.')
+        return
+      }
+      setLogoUrl(nextValue)
+      setCreateError('')
+    }
+    reader.onerror = () => {
+      setCreateError('Could not read the selected logo image.')
+    }
+    reader.readAsDataURL(file)
   }
 
   function toggleAccepting(hackathonId: string) {
@@ -290,6 +317,27 @@ function AdminPage({ submissions, setSubmissions, hackathons, setHackathons }: A
               {createError && (
                 <div className="error" id="hackathonNameError">
                   {createError}
+                </div>
+              )}
+            </div>
+
+            <div className="field">
+              <label htmlFor="hackathonLogoUrl">Logo URL / path (optional)</label>
+              <input
+                id="hackathonLogoUrl"
+                name="hackathonLogoUrl"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="e.g. /assets/my-hackathon-logo.png or https://example.com/logo.png"
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="hackathonLogoFile">Upload logo image (optional)</label>
+              <input id="hackathonLogoFile" name="hackathonLogoFile" type="file" accept="image/*" onChange={handleLogoFileChange} />
+              {logoUrl && (
+                <div className="mt-2">
+                  <img className="adminLogoPreview" src={logoUrl} alt="Hackathon logo preview" />
                 </div>
               )}
             </div>

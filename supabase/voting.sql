@@ -1,6 +1,9 @@
 -- Run this in Supabase SQL Editor after your submissions table exists.
 -- Enforces one vote per user per submission, while allowing users to vote on multiple submissions.
 
+alter table if exists public.hackathons
+add column if not exists logo_url text;
+
 create table if not exists public.submission_votes (
   submission_id text not null references public.submissions(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,

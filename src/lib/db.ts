@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient'
 type DbHackathonRow = {
   id: string
   name: string
+  logo_url: string | null
   accepting_submissions: boolean
   starts_at: string
   ends_at: string
@@ -31,6 +32,7 @@ function fromDbHackathon(row: DbHackathonRow): Hackathon {
   return {
     id: row.id,
     name: row.name,
+    logoUrl: row.logo_url ?? undefined,
     acceptingSubmissions: row.accepting_submissions,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
@@ -42,6 +44,7 @@ function toDbHackathon(h: Hackathon): DbHackathonRow {
   return {
     id: h.id,
     name: h.name,
+    logo_url: h.logoUrl ?? null,
     accepting_submissions: h.acceptingSubmissions,
     starts_at: h.startsAt,
     ends_at: h.endsAt,
