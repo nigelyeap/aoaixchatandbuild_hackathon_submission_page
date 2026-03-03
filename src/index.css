@@ -7,14 +7,16 @@
     color-scheme: dark;
   }
 
-  html,
-  body,
-  #root {
-    height: 100%;
+  html {
+    @apply min-h-full bg-gradient-to-br from-[#07020D] via-[#12002A] to-black bg-fixed;
   }
 
   body {
-    @apply min-h-screen bg-gradient-to-br from-[#07020D] via-[#12002A] to-black text-slate-100 antialiased;
+    @apply min-h-full text-slate-100 antialiased bg-transparent;
+  }
+
+  #root {
+    @apply min-h-screen;
   }
 
   a {
@@ -37,6 +39,10 @@
 
   .headerInner {
     @apply mx-auto w-full max-w-6xl px-6 py-5 flex items-center justify-between gap-6;
+  }
+
+  .headerBack {
+    @apply absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30;
   }
 
   .brand {
@@ -145,7 +151,7 @@
   }
 
   .btn {
-    @apply inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-extrabold text-white bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_12px_30px_rgba(124,58,237,0.25)] ring-1 ring-white/10 hover:from-violet-500 hover:to-indigo-500 active:translate-y-[1px] transition;
+    @apply inline-flex h-12 items-center justify-center whitespace-nowrap rounded-2xl px-5 text-base font-extrabold text-white bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_12px_30px_rgba(124,58,237,0.25)] ring-1 ring-white/10 hover:from-violet-500 hover:to-indigo-500 active:translate-y-[1px] transition;
   }
 
   .btn:disabled {
@@ -153,7 +159,7 @@
   }
 
   .btnGhost {
-    @apply bg-white/0 text-slate-100 border border-white/15 shadow-none hover:bg-white/5 hover:from-transparent hover:to-transparent;
+    @apply h-12 bg-white/0 text-slate-100 border border-white/15 shadow-none hover:bg-white/5 hover:from-transparent hover:to-transparent;
   }
 
   .listHeader {
@@ -320,6 +326,26 @@
 
   .thumbImg {
     @apply h-full w-full object-cover object-top;
+  }
+
+  .hackathonHero {
+    @apply mt-6 w-full text-left rounded-3xl border border-white/10 bg-gradient-to-r from-violet-700/30 via-indigo-700/20 to-black/10 shadow-[0_30px_90px_rgba(0,0,0,0.55)] ring-1 ring-white/10 px-8 py-8 hover:from-violet-700/40 hover:via-indigo-700/25 transition;
+  }
+
+  .hackathonHeroTop {
+    @apply flex items-start justify-between gap-6;
+  }
+
+  .hackathonHeroTitle {
+    @apply text-3xl sm:text-4xl font-black tracking-tight;
+  }
+
+  .hackathonHeroMeta {
+    @apply mt-3 text-base text-slate-200/90 font-semibold flex flex-wrap gap-3 items-center;
+  }
+
+  .hackathonHeroAction {
+    @apply inline-flex h-12 items-center justify-center rounded-2xl px-6 text-base font-extrabold bg-white/5 border border-white/15 text-slate-100;
   }
 }
 

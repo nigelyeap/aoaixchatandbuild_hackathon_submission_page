@@ -53,7 +53,7 @@ export default function LandingPage() {
           setSignupMsg('Check your inbox to confirm your email. After confirming, come back and log in.')
           setTab('login')
         } else {
-          navigate('/home')
+          navigate('/hackathons')
         }
 
         setSignupName('')
@@ -85,7 +85,7 @@ export default function LandingPage() {
       try {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        navigate('/home')
+        navigate('/hackathons')
       } catch (err) {
         console.error(err)
         setError('Login failed. Check your credentials (and confirm your email if you just signed up).')
@@ -261,6 +261,12 @@ export default function LandingPage() {
                     <button type="button" className="font-extrabold text-violet-200 hover:underline" onClick={() => setTab('signup')}>
                       Sign up
                     </button>
+                  </div>
+
+                  <div className="text-center text-xs text-slate-400">
+                    <Link className="font-extrabold text-violet-200 hover:underline" to="/forgot">
+                      Forgot password?
+                    </Link>
                   </div>
                 </form>
               )}
