@@ -256,6 +256,13 @@ export default function LandingPage() {
                     {loginBusy ? 'Logging in…' : 'Log in'}
                   </button>
 
+                  <Link
+                    to="/admin-login"
+                    className="w-full mt-1 rounded-xl px-4 py-3 text-center text-sm font-extrabold text-slate-200/90 ring-1 ring-white/15 hover:bg-white/5"
+                  >
+                    Admin Login
+                  </Link>
+
                   <div className="text-center text-xs text-slate-400">
                     Need an account?{' '}
                     <button type="button" className="font-extrabold text-violet-200 hover:underline" onClick={() => setTab('signup')}>
