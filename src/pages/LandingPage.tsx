@@ -96,13 +96,13 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-3rem)] grid place-items-center py-10">
+    <div className="authShell">
       <div className="w-full max-w-md">
-        <div className="rounded-3xl border border-white/10 bg-black/35 shadow-[0_30px_90px_rgba(0,0,0,0.6)] backdrop-blur px-7 py-8">
+        <div className="authPanel">
           <div className="flex items-center justify-center">
             <div className="grid place-items-center overflow-visible">
               <img
-                src="/assets/chatandbuild-logo-horizontal.png"
+                src="/assets/chatandbuild-logo-horizontal.svg"
                 alt="ChatAndBuild logo"
                 className="h-24 sm:h-28 w-auto object-contain"
               />
@@ -117,40 +117,30 @@ export default function LandingPage() {
           </div>
 
           {!isSupabaseConfigured ? (
-            <div className="mt-6 rounded-2xl border border-white/10 bg-black/25 px-4 py-4 text-slate-300">
+            <div className="authMessageInfo mt-6">
               Supabase is not configured on this deployment.
             </div>
           ) : (
             <>
-              <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-1 ring-1 ring-white/10">
+              <div className="authTabs">
                 <button
                   type="button"
                   onClick={() => setTab('signup')}
-                  className={
-                    tab === 'signup'
-                      ? 'rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-3 py-2 text-sm font-extrabold'
-                      : 'rounded-xl px-3 py-2 text-sm font-extrabold text-slate-200/80 hover:bg-white/5'
-                  }
+                  className={tab === 'signup' ? 'authTab authTabActive' : 'authTab'}
                 >
                   Sign up
                 </button>
                 <button
                   type="button"
                   onClick={() => setTab('login')}
-                  className={
-                    tab === 'login'
-                      ? 'rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-3 py-2 text-sm font-extrabold'
-                      : 'rounded-xl px-3 py-2 text-sm font-extrabold text-slate-200/80 hover:bg-white/5'
-                  }
+                  className={tab === 'login' ? 'authTab authTabActive' : 'authTab'}
                 >
                   Log in
                 </button>
               </div>
 
               {error && (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-rose-200 font-bold">
-                  {error}
-                </div>
+                <div className="authMessageError">{error}</div>
               )}
 
               {tab === 'signup' ? (
@@ -166,7 +156,7 @@ export default function LandingPage() {
                       placeholder="e.g. Shely E"
                       autoComplete="name"
                       disabled={signupBusy}
-                      className="w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none focus:border-violet-400/40 focus:ring-4 focus:ring-violet-500/15"
+                      className="authInput"
                     />
                   </div>
 
@@ -182,7 +172,7 @@ export default function LandingPage() {
                       autoComplete="email"
                       inputMode="email"
                       disabled={signupBusy}
-                      className="w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none focus:border-violet-400/40 focus:ring-4 focus:ring-violet-500/15"
+                      className="authInput"
                     />
                   </div>
 
@@ -198,12 +188,12 @@ export default function LandingPage() {
                       placeholder="Create a password"
                       autoComplete="new-password"
                       disabled={signupBusy}
-                      className="w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none focus:border-violet-400/40 focus:ring-4 focus:ring-violet-500/15"
+                      className="authInput"
                     />
                   </div>
 
                   {signupMsg && (
-                    <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-200 font-semibold">
+                    <div className="authMessageInfo">
                       {signupMsg}
                     </div>
                   )}
@@ -229,7 +219,7 @@ export default function LandingPage() {
                       placeholder="you@example.com"
                       autoComplete="email"
                       disabled={loginBusy}
-                      className="w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none focus:border-violet-400/40 focus:ring-4 focus:ring-violet-500/15"
+                      className="authInput"
                     />
                   </div>
 
@@ -245,7 +235,7 @@ export default function LandingPage() {
                       placeholder="Your password"
                       autoComplete="current-password"
                       disabled={loginBusy}
-                      className="w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none focus:border-violet-400/40 focus:ring-4 focus:ring-violet-500/15"
+                      className="authInput"
                     />
                   </div>
 

@@ -44,7 +44,7 @@ const ADMIN_AUTH_STORAGE_KEY = 'aoai.adminAuthenticated.v1'
 const USER_VOTES_STORAGE_KEY = 'aoai.userVotes.v1'
 const DEFAULT_HACKATHON_ID = 'aoai-chatandbuild-hackathon'
 const GAINS_HACKATHON_ID = 'gains-hackathon'
-const CHATANDBUILD_LOGO_URL = '/assets/chatandbuild-logo-horizontal.png'
+const CHATANDBUILD_LOGO_URL = '/assets/chatandbuild-logo-horizontal.svg'
 const ALLOWED_HACKATHON_IDS = new Set<string>([DEFAULT_HACKATHON_ID, GAINS_HACKATHON_ID])
 const AOAI_HACKATHON_PATH = '/aoaichatandbuildhackathon'
 const GAINS_HACKATHON_PATH = '/gains'
@@ -339,7 +339,7 @@ function defaultHackathon(): Hackathon {
 function gainsHackathon(): Hackathon {
   return {
     id: GAINS_HACKATHON_ID,
-    name: 'Gains',
+    name: 'Gains Hackathon',
     acceptingSubmissions: true,
     startsAt: '2026-03-02T00:00:00.000Z',
     endsAt: '2026-03-31T23:59:59.000Z',
@@ -674,6 +674,12 @@ function SubmissionsPage({
     setCarouselNonce((n) => n + 1)
   }
 
+  function stepFeatured(delta: number) {
+    if (featured.length <= 1) return
+    setFeaturedIndex((index) => (index + delta + featured.length) % featured.length)
+    setCarouselNonce((n) => n + 1)
+  }
+
   return (
     <>
       <Link className="btn newSubmissionHeroBtn" to={submitPath}>
@@ -692,6 +698,22 @@ function SubmissionsPage({
         ) : (
           <div className="featuredCarousel" aria-label="Featured submission carousel">
             <div className="featuredViewport">
+              {featured.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="featuredNavHotspot featuredNavHotspotLeft"
+                    onClick={() => stepFeatured(-1)}
+                    aria-label="Show previous featured submission"
+                  />
+                  <button
+                    type="button"
+                    className="featuredNavHotspot featuredNavHotspotRight"
+                    onClick={() => stepFeatured(1)}
+                    aria-label="Show next featured submission"
+                  />
+                </>
+              )}
               <div
                 className="featuredTrack"
                 style={{ transform: `translateX(-${featuredIndex * 100}%)` }}
@@ -982,12 +1004,6 @@ function NewSubmissionPage({
         Required fields are marked <span aria-hidden="true">*</span>.
       </p>
 
-      {justSavedId && (
-        <div className="callout success" role="status">
-          Submission saved.
-        </div>
-      )}
-
       <form className="form" onSubmit={submit} noValidate>
         <div className="formGrid">
           <div className="field">
@@ -1121,6 +1137,12 @@ function NewSubmissionPage({
             )}
           </div>
         </div>
+
+        {justSavedId && (
+          <div className="callout success" role="status">
+            Submission saved.
+          </div>
+        )}
 
         <div className="actions">
           <button className="btn" type="submit" disabled={hardBlocked}>

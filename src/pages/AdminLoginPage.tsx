@@ -51,15 +51,15 @@ export default function AdminLoginPage({ onAuthenticated }: AdminLoginPageProps)
   }
 
   return (
-    <div className="min-h-[calc(100vh-3rem)] grid place-items-center py-10">
+    <div className="authShell">
       <div className="w-full max-w-md">
-        <div className="rounded-3xl border border-white/10 bg-black/35 shadow-[0_30px_90px_rgba(0,0,0,0.6)] backdrop-blur px-7 py-8">
+        <div className="authPanel">
           <div className="flex items-center justify-center">
-            <div className="h-16 w-16 rounded-2xl bg-white/5 ring-1 ring-white/10 grid place-items-center overflow-hidden">
+            <div className="grid place-items-center overflow-visible">
               <img
-                src="/assets/chatandbuild-logo-horizontal.png"
+                src="/assets/chatandbuild-logo-horizontal.svg"
                 alt="ChatAndBuild logo"
-                className="h-full w-full object-contain p-2"
+                className="h-24 sm:h-28 w-auto object-contain"
               />
             </div>
           </div>
@@ -73,9 +73,7 @@ export default function AdminLoginPage({ onAuthenticated }: AdminLoginPageProps)
           </div>
 
           {error && (
-            <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-rose-200 font-bold">
-              {error}
-            </div>
+            <div className="authMessageError">{error}</div>
           )}
 
           <form className="mt-5 grid gap-3" onSubmit={submit} noValidate>
@@ -90,7 +88,7 @@ export default function AdminLoginPage({ onAuthenticated }: AdminLoginPageProps)
                 placeholder="admin@aoai.local"
                 autoComplete="email"
                 disabled={busy}
-                className="w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none focus:border-violet-400/40 focus:ring-4 focus:ring-violet-500/15"
+                className="authInput"
               />
             </div>
 
@@ -106,7 +104,7 @@ export default function AdminLoginPage({ onAuthenticated }: AdminLoginPageProps)
                 placeholder="Enter admin password"
                 autoComplete="current-password"
                 disabled={busy}
-                className="w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none focus:border-violet-400/40 focus:ring-4 focus:ring-violet-500/15"
+                className="authInput"
               />
             </div>
 

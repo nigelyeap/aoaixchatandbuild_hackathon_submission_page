@@ -8,7 +8,7 @@
   }
 
   html {
-    @apply min-h-full bg-gradient-to-br from-[#07020D] via-[#12002A] to-black bg-fixed;
+    @apply min-h-full bg-gradient-to-br from-[#02030A] via-[#0A1230] to-[#17072B] bg-fixed;
   }
 
   body {
@@ -34,7 +34,7 @@
   }
 
   .header {
-    @apply sticky top-0 z-20 border-b border-white/10 bg-black/40 backdrop-blur;
+    @apply sticky top-0 z-20 border-b border-white/15 bg-surface-900/80 backdrop-blur-md;
   }
 
   .headerInner {
@@ -94,7 +94,7 @@
   }
 
   .card {
-    @apply rounded-2xl border border-white/10 bg-white/5 shadow-[0_16px_50px_rgba(0,0,0,0.35)] backdrop-blur px-5 py-5;
+    @apply rounded-2xl border border-white/20 bg-slate-900/80 shadow-[0_20px_60px_rgba(2,6,23,0.62)] ring-1 ring-white/10 backdrop-blur px-5 py-5;
   }
 
   .cardTitle {
@@ -163,7 +163,7 @@
   }
 
   .btn {
-    @apply inline-flex h-12 items-center justify-center whitespace-nowrap rounded-2xl px-5 text-base font-extrabold text-white bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_12px_30px_rgba(124,58,237,0.25)] ring-1 ring-white/10 hover:from-violet-500 hover:to-indigo-500 active:translate-y-[1px] transition;
+    @apply inline-flex h-12 items-center justify-center whitespace-nowrap rounded-2xl px-5 text-base font-extrabold text-white bg-gradient-to-r from-brand-600 to-indigo-600 shadow-[0_12px_30px_rgba(109,40,217,0.28)] ring-1 ring-white/10 hover:from-brand-500 hover:to-indigo-500 active:translate-y-[1px] transition;
   }
 
   .btn:disabled {
@@ -171,7 +171,39 @@
   }
 
   .btnGhost {
-    @apply h-12 bg-white/0 text-slate-100 border border-white/15 shadow-none hover:bg-white/5 hover:from-transparent hover:to-transparent;
+    @apply h-12 bg-surface-700/30 text-slate-100 border border-white/15 shadow-none hover:bg-surface-700/50 hover:from-transparent hover:to-transparent;
+  }
+
+  .authShell {
+    @apply min-h-[calc(100vh-3rem)] grid place-items-center py-10;
+  }
+
+  .authPanel {
+    @apply rounded-3xl border border-white/20 bg-slate-900/80 shadow-[0_30px_90px_rgba(2,6,23,0.68)] ring-1 ring-white/10 backdrop-blur px-7 py-8;
+  }
+
+  .authTabs {
+    @apply mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-surface-700/40 p-1 ring-1 ring-white/10;
+  }
+
+  .authTab {
+    @apply rounded-xl px-3 py-2 text-sm font-extrabold text-slate-200/80 hover:bg-white/5 transition;
+  }
+
+  .authTabActive {
+    @apply bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-[0_8px_22px_rgba(109,40,217,0.35)];
+  }
+
+  .authInput {
+    @apply w-full rounded-xl border border-white/10 bg-surface-800/55 px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none focus:border-brand-400/40 focus:ring-4 focus:ring-brand-500/15;
+  }
+
+  .authMessageError {
+    @apply mt-4 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100 font-semibold;
+  }
+
+  .authMessageInfo {
+    @apply rounded-2xl border border-white/10 bg-surface-700/40 px-4 py-3 text-sm text-slate-200 font-semibold;
   }
 
   .newSubmissionHeroBtn {
@@ -187,7 +219,7 @@
   }
 
   .submission {
-    @apply rounded-2xl border border-white/10 bg-black/20 px-4 py-4;
+    @apply rounded-2xl border border-white/15 bg-slate-950/55 px-4 py-4;
   }
 
   .submissionTitle {
@@ -241,7 +273,19 @@
   }
 
   .featuredViewport {
-    @apply overflow-hidden;
+    @apply overflow-hidden relative;
+  }
+
+  .featuredNavHotspot {
+    @apply absolute top-0 bottom-0 z-10 w-[18%] border-0 bg-transparent p-0;
+  }
+
+  .featuredNavHotspotLeft {
+    @apply left-0 cursor-pointer;
+  }
+
+  .featuredNavHotspotRight {
+    @apply right-0 cursor-pointer;
   }
 
   .featuredTrack {
@@ -315,7 +359,7 @@
   }
 
   .compactCard {
-    @apply rounded-2xl border border-white/10 bg-black/20 p-4 hover:bg-black/30 transition;
+    @apply rounded-2xl border border-white/15 bg-slate-950/55 p-4 hover:bg-slate-900/70 transition;
   }
 
   .compactTop {
@@ -365,7 +409,7 @@
   }
 
   .hackathonHero {
-    @apply mt-6 w-full text-left rounded-3xl border border-white/10 bg-gradient-to-r from-violet-700/30 via-indigo-700/20 to-black/10 shadow-[0_30px_90px_rgba(0,0,0,0.55)] ring-1 ring-white/10 px-8 py-8 hover:from-violet-700/40 hover:via-indigo-700/25 transition;
+    @apply mt-6 w-full text-left rounded-3xl border border-white/20 bg-gradient-to-r from-brand-700/35 via-indigo-700/25 to-slate-900/35 shadow-[0_30px_90px_rgba(2,6,23,0.62)] ring-1 ring-white/15 px-8 py-8 hover:from-brand-700/45 hover:via-indigo-700/35 transition;
   }
 
   .hackathonHeroTop {
