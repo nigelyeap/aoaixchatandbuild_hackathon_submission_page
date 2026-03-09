@@ -536,6 +536,8 @@ function HeaderNav({
   const location = useLocation()
   const onSubmitPage = location.pathname.endsWith('/submit')
   const onAdminPage = location.pathname === '/admin'
+  const onProfilePage = location.pathname === '/profile'
+  const onAoaiHackathonPage = location.pathname === AOAI_HACKATHON_PATH
   const onHackathonsPage = location.pathname === '/home' || location.pathname === '/hackathons'
   const onSubmissionsPage = location.pathname === AOAI_HACKATHON_PATH || location.pathname === GAINS_HACKATHON_PATH
   const showBack = Boolean(user && variant === 'full' && !onHackathonsPage && !onAdminPage)
@@ -571,7 +573,15 @@ function HeaderNav({
             ) : (
               <>
                 <h1 className="title">Hackathon Submission Portal</h1>
-                {variant !== 'hackathon' && <p className="subtitle">Browse submissions or add a new one.</p>}
+                {variant !== 'hackathon' && (
+                  <p className="subtitle">
+                    {onProfilePage
+                      ? 'Profile'
+                      : onAoaiHackathonPage
+                        ? 'AOAI x ChatandBuild hackathon'
+                        : 'Browse submissions or add a new one.'}
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -739,19 +749,19 @@ function SubmissionsPage({
                             </span>
                             <span className="metaItem">{s.votes} votes</span>
                           </div>
-                        </div>
-                        <div className="submissionActions">
-                          <button
-                            className="btn btnGhost voteButton"
-                            type="button"
-                            onClick={() => onVote(s.id)}
-                            disabled={votingSubmissionIds.has(s.id) || votedSubmissionIds.has(s.id)}
-                          >
-                            {votingSubmissionIds.has(s.id) ? 'Voting...' : votedSubmissionIds.has(s.id) ? 'Voted' : 'Vote'}
-                          </button>
-                          <a className="link" href={s.appLink} target="_blank" rel="noopener noreferrer">
-                            Open app
-                          </a>
+                          <div className="actions mt-3">
+                            <button
+                              className="btn btnGhost voteButton"
+                              type="button"
+                              onClick={() => onVote(s.id)}
+                              disabled={votingSubmissionIds.has(s.id) || votedSubmissionIds.has(s.id)}
+                            >
+                              {votingSubmissionIds.has(s.id) ? 'Voting...' : votedSubmissionIds.has(s.id) ? 'Voted' : 'Vote'}
+                            </button>
+                            <a className="link" href={s.appLink} target="_blank" rel="noopener noreferrer">
+                              Open app
+                            </a>
+                          </div>
                         </div>
                       </div>
 
@@ -1607,7 +1617,12 @@ function App() {
             path="/profile"
             element={
               <RequireAuth user={user}>
-                <ProfilePage user={user} />
+                <ProfilePage
+                  user={user}
+                  submissions={submissions}
+                  hackathons={hackathons}
+                  votedSubmissionIds={votedSubmissionIds}
+                />
               </RequireAuth>
             }
           />
