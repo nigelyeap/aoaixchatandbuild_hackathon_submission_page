@@ -57,7 +57,7 @@ export default function AdminLoginPage({ onAuthenticated }: AdminLoginPageProps)
           <div className="flex items-center justify-center">
             <div className="h-16 w-16 rounded-2xl bg-white/5 ring-1 ring-white/10 grid place-items-center overflow-hidden">
               <img
-                src="/assets/chatandbuild-logo.jpg"
+                src="/assets/chatandbuild-logo-horizontal.png"
                 alt="ChatAndBuild logo"
                 className="h-full w-full object-contain p-2"
               />

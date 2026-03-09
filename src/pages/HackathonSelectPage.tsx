@@ -2,8 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import type { Hackathon } from '../App'
 
 function formatDateRange(h: Hackathon) {
-  const start = new Date(h.startsAt).toLocaleString()
-  const end = new Date(h.endsAt).toLocaleString()
+  const start = new Date(h.startsAt).toLocaleDateString()
+  const end = new Date(h.endsAt).toLocaleDateString()
   return `${start} – ${end}`
 }
 
@@ -19,19 +19,20 @@ export default function HackathonSelectPage({
   hackathons,
   selectedHackathonId,
   onSelectHackathon,
+  getHackathonPath,
 }: {
   hackathons: Hackathon[]
   selectedHackathonId: string | null
   onSelectHackathon: (id: string) => void
+  getHackathonPath: (id: string) => string
 }) {
   const navigate = useNavigate()
 
   return (
     <section className="card">
       <div className="listHeader">
-        <h2 className="cardTitle cardTitleHero">Choose a hackathon</h2>
+        <h2 className="cardTitle cardTitleHero">Ongoing hackathons</h2>
       </div>
-      <p className="cardHint">Pick where you’re submitting. You can change this later.</p>
 
       {hackathons.length === 0 ? (
         <div className="empty">No hackathons available.</div>
@@ -43,7 +44,7 @@ export default function HackathonSelectPage({
             className="hackathonHero"
             onClick={() => {
               onSelectHackathon(hackathon.id)
-              navigate('/home')
+              navigate(getHackathonPath(hackathon.id))
             }}
           >
             <div className="hackathonHeroTop">

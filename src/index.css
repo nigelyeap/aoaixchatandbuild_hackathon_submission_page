@@ -58,23 +58,23 @@
   }
 
   .brand {
-    @apply flex items-center gap-3;
+    @apply flex items-center gap-5;
   }
 
   .brandMarks {
-    @apply flex items-center;
+    @apply flex items-center gap-4;
   }
 
   .brandMark {
-    @apply h-[72px] w-[72px] rounded-2xl bg-white/5 ring-1 ring-white/10 overflow-hidden grid place-items-center;
+    @apply h-auto w-auto rounded-none bg-transparent ring-0 overflow-visible grid place-items-center;
   }
 
   .brandLogo {
-    @apply h-full w-full object-contain p-3;
+    @apply h-[96px] w-auto object-contain p-0;
   }
 
   .brandLogoCnb {
-    @apply p-2;
+    @apply h-[120px] max-w-[420px];
   }
 
   .titleLead {
@@ -172,6 +172,10 @@
 
   .btnGhost {
     @apply h-12 bg-white/0 text-slate-100 border border-white/15 shadow-none hover:bg-white/5 hover:from-transparent hover:to-transparent;
+  }
+
+  .newSubmissionHeroBtn {
+    @apply w-full h-14 text-lg rounded-2xl;
   }
 
   .listHeader {
@@ -373,11 +377,11 @@
   }
 
   .hackathonHeroLogoWrap {
-    @apply mb-4 h-14 w-14 rounded-2xl bg-white/10 ring-1 ring-white/20 overflow-hidden grid place-items-center;
+    @apply mb-4 h-auto w-auto rounded-none bg-transparent ring-0 overflow-visible grid place-items-center justify-start;
   }
 
   .hackathonHeroLogo {
-    @apply h-full w-full object-contain p-2;
+    @apply h-20 sm:h-24 w-auto object-contain p-0;
   }
 
   .hackathonHeroMeta {

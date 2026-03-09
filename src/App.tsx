@@ -43,6 +43,11 @@ const SELECTED_HACKATHON_STORAGE_KEY = 'aoai.selectedHackathon.v1'
 const ADMIN_AUTH_STORAGE_KEY = 'aoai.adminAuthenticated.v1'
 const USER_VOTES_STORAGE_KEY = 'aoai.userVotes.v1'
 const DEFAULT_HACKATHON_ID = 'aoai-chatandbuild-hackathon'
+const GAINS_HACKATHON_ID = 'gains-hackathon'
+const CHATANDBUILD_LOGO_URL = '/assets/chatandbuild-logo-horizontal.png'
+const ALLOWED_HACKATHON_IDS = new Set<string>([DEFAULT_HACKATHON_ID, GAINS_HACKATHON_ID])
+const AOAI_HACKATHON_PATH = '/aoaichatandbuildhackathon'
+const GAINS_HACKATHON_PATH = '/gains'
 const SEED_NUMEROLOGY_LINK = 'https://numerology-app-with-1762069380857.chatand.build/'
 const SEED_STUDY_BUDDY_LINK = 'https://study-buddy-ai.chatand.build/'
 const SEED_FOOD_WASTE_LINK = 'https://smart-food-rescue.chatand.build/'
@@ -325,14 +330,37 @@ function defaultHackathon(): Hackathon {
     name: 'AOAI x ChatAndBuild Hackathon',
     logoUrl: '/assets/aoai-logo.png',
     acceptingSubmissions: true,
-    startsAt: '2026-02-20T09:00:00.000Z',
-    endsAt: '2026-03-20T23:59:59.000Z',
-    createdAt: '2026-02-20T09:00:00.000Z',
+    startsAt: '2026-02-26T00:00:00.000Z',
+    endsAt: '2026-03-12T23:59:59.000Z',
+    createdAt: '2026-02-26T00:00:00.000Z',
+  }
+}
+
+function gainsHackathon(): Hackathon {
+  return {
+    id: GAINS_HACKATHON_ID,
+    name: 'Gains',
+    acceptingSubmissions: true,
+    startsAt: '2026-03-02T00:00:00.000Z',
+    endsAt: '2026-03-31T23:59:59.000Z',
+    createdAt: '2026-03-02T00:00:00.000Z',
   }
 }
 
 function seedHackathons(): Hackathon[] {
-  return [defaultHackathon()]
+  return [defaultHackathon(), gainsHackathon()]
+}
+
+function getHackathonPath(hackathonId: string) {
+  if (hackathonId === DEFAULT_HACKATHON_ID) return AOAI_HACKATHON_PATH
+  if (hackathonId === GAINS_HACKATHON_ID) return GAINS_HACKATHON_PATH
+  return '/home'
+}
+
+function getHackathonIdFromPath(pathname: string): string | null {
+  if (pathname === AOAI_HACKATHON_PATH || pathname.startsWith(`${AOAI_HACKATHON_PATH}/`)) return DEFAULT_HACKATHON_ID
+  if (pathname === GAINS_HACKATHON_PATH || pathname.startsWith(`${GAINS_HACKATHON_PATH}/`)) return GAINS_HACKATHON_ID
+  return null
 }
 
 function saveHackathons(hackathons: Hackathon[]) {
@@ -361,7 +389,7 @@ function getHackathons() {
           const seededHackathon = seededById.get(hackathon.id)
           if (!seededHackathon) return hackathon
 
-          const nextLogoUrl = hackathon.logoUrl ?? seededHackathon.logoUrl
+          const nextLogoUrl = seededHackathon.logoUrl
           if (hackathon.name === seededHackathon.name && nextLogoUrl === hackathon.logoUrl) return hackathon
 
           return {
@@ -371,9 +399,10 @@ function getHackathons() {
           }
         })
 
-        const existingIds = new Set(migrated.map((hackathon) => hackathon.id))
+        const filteredMigrated = migrated.filter((hackathon) => ALLOWED_HACKATHON_IDS.has(hackathon.id))
+        const existingIds = new Set(filteredMigrated.map((hackathon) => hackathon.id))
         const missingSeeded = seeded.filter((hackathon) => !existingIds.has(hackathon.id))
-        const merged = [...migrated, ...missingSeeded]
+        const merged = [...filteredMigrated, ...missingSeeded]
         saveHackathons(merged)
         return merged
       }
@@ -444,7 +473,10 @@ function normalizeStoredSubmission(value: unknown): Submission | null {
     appDescription: submission.appDescription,
     problemDescription: submission.problemDescription,
     appLink: submission.appLink,
-    hackathonId: DEFAULT_HACKATHON_ID,
+    hackathonId:
+      typeof submission.hackathonId === 'string' && ALLOWED_HACKATHON_IDS.has(submission.hackathonId)
+        ? submission.hackathonId
+        : DEFAULT_HACKATHON_ID,
     votes: typeof submission.votes === 'number' && Number.isFinite(submission.votes) ? submission.votes : 0,
     userId: typeof submission.userId === 'string' ? submission.userId : null,
   }
@@ -495,26 +527,23 @@ type HeaderVariant = 'full' | 'hackathon'
 function HeaderNav({
   user,
   variant,
-  hackathonLogoUrl,
-  hackathonName,
+  currentHackathonPath,
 }: {
   user: User | null
   variant: HeaderVariant
-  hackathonLogoUrl?: string | null
-  hackathonName?: string | null
+  currentHackathonPath: string
 }) {
   const location = useLocation()
-  const onSubmitPage = location.pathname === '/submit'
+  const onSubmitPage = location.pathname.endsWith('/submit')
   const onAdminPage = location.pathname === '/admin'
-  const onHackathonsPage = location.pathname === '/hackathons'
+  const onHackathonsPage = location.pathname === '/home' || location.pathname === '/hackathons'
+  const onSubmissionsPage = location.pathname === AOAI_HACKATHON_PATH || location.pathname === GAINS_HACKATHON_PATH
   const showBack = Boolean(user && variant === 'full' && !onHackathonsPage && !onAdminPage)
-  const normalizedHackathonLogoUrl = hackathonLogoUrl?.trim() ?? ''
-  const showHackathonLogo = normalizedHackathonLogoUrl.length > 0
 
   return (
     <header className="header">
       {showBack && (
-        <Link className="btn btnGhost headerBack" to="/hackathons" aria-label="Back to hackathons" title="Back to hackathons">
+        <Link className="btn btnGhost headerBack" to="/home" aria-label="Back to hackathons" title="Back to hackathons">
           <svg
             aria-hidden="true"
             className="headerBackIcon"
@@ -530,13 +559,8 @@ function HeaderNav({
       <div className="headerInner">
         <div className="brand">
           <div className="brandMarks">
-            {showHackathonLogo && (
-              <div className="brandMark">
-                <img className="brandLogo" src={normalizedHackathonLogoUrl} alt={`${hackathonName ?? 'Hackathon'} logo`} />
-              </div>
-            )}
             <div className="brandMark">
-              <img className="brandLogo brandLogoCnb" src="/assets/chatandbuild-logo.jpg" alt="ChatAndBuild logo" />
+              <img className="brandLogo brandLogoCnb" src={CHATANDBUILD_LOGO_URL} alt="ChatAndBuild logo" />
             </div>
           </div>
           <div>
@@ -546,11 +570,8 @@ function HeaderNav({
               </h1>
             ) : (
               <>
-                {variant === 'full' && <div className="titleLead">{hackathonName ?? 'ChatAndBuild'}</div>}
-                <h1 className="title">ChatAndBuild Hackathon Submission Portal</h1>
-                <p className="subtitle">
-                  {variant === 'hackathon' ? 'Choose a hackathon to continue.' : 'Browse submissions or add a new one.'}
-                </p>
+                <h1 className="title">Hackathon Submission Portal</h1>
+                {variant !== 'hackathon' && <p className="subtitle">Browse submissions or add a new one.</p>}
               </>
             )}
           </div>
@@ -587,14 +608,14 @@ function HeaderNav({
             {user &&
               variant === 'full' &&
               (onSubmitPage ? (
-                <Link className="btn btnGhost" to="/home">
+                <Link className="btn btnGhost" to={currentHackathonPath}>
                   View submissions
                 </Link>
-              ) : (
-                <Link className="btn" to="/submit">
+              ) : !onSubmissionsPage ? (
+                <Link className="btn" to={`${currentHackathonPath}/submit`}>
                   New submission
                 </Link>
-              ))}
+              ) : null)}
           </div>
         )}
       </div>
@@ -604,17 +625,13 @@ function HeaderNav({
 
 function SubmissionsPage({
   submissions,
-  hackathons,
-  selectedHackathonId,
-  onSelectedHackathonChange,
+  submitPath,
   onVote,
   votingSubmissionIds,
   votedSubmissionIds,
 }: {
   submissions: Submission[]
-  hackathons: Hackathon[]
-  selectedHackathonId: string
-  onSelectedHackathonChange: (hackathonId: string) => void
+  submitPath: string
   onVote: (submissionId: string) => void
   votingSubmissionIds: ReadonlySet<string>
   votedSubmissionIds: ReadonlySet<string>
@@ -635,10 +652,6 @@ function SubmissionsPage({
   }, [sortedSubmissions])
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [carouselNonce, setCarouselNonce] = useState(0)
-  const selectedHackathonName = useMemo(() => {
-    if (selectedHackathonId === 'all') return 'All hackathons'
-    return hackathons.find((hackathon) => hackathon.id === selectedHackathonId)?.name ?? 'All hackathons'
-  }, [hackathons, selectedHackathonId])
   const featuredSignature = useMemo(
     () => featured.map((submission) => `${submission.id}:${submission.votes}`).join('|'),
     [featured],
@@ -663,29 +676,14 @@ function SubmissionsPage({
 
   return (
     <>
+      <Link className="btn newSubmissionHeroBtn" to={submitPath}>
+        New submission
+      </Link>
+
       <section className="card">
         <div className="listHeader">
           <h2 className="cardTitle cardTitleHero">Featured submissions</h2>
-          <div className="helpRow">
-            <label className="helpText" htmlFor="homeHackathonFilter">
-              Hackathon
-            </label>
-            <select
-              id="homeHackathonFilter"
-              value={selectedHackathonId}
-              onChange={(e) => onSelectedHackathonChange(e.target.value)}
-              aria-label="Filter submissions by hackathon"
-            >
-              <option value="all">All hackathons</option>
-              {hackathons.map((hackathon) => (
-                <option key={hackathon.id} value={hackathon.id}>
-                  {hackathon.name}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
-        <p className="cardHint">Showing: {selectedHackathonName}</p>
 
         {submissions.length === 0 ? (
           <div className="empty">No submissions yet. Use “New submission” to add the first one.</div>
@@ -1139,6 +1137,7 @@ function NewSubmissionPage({
 
 function App() {
   const location = useLocation()
+  const isAuthRecoveryRoute = location.pathname === '/forgot' || location.pathname === '/reset'
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [hackathons, setHackathons] = useState<Hackathon[]>([])
   const [selectedHackathonId, setSelectedHackathonId] = useState<string>(() => {
@@ -1166,19 +1165,11 @@ function App() {
   const prevHackathonsRef = useRef<Map<string, Hackathon> | null>(null)
   const votingSubmissionIdsRef = useRef<Set<string>>(new Set())
   const votedSubmissionIdsRef = useRef<Set<string>>(new Set())
-  const visibleSubmissions = useMemo(
-    () =>
-      selectedHackathonId === 'all'
-        ? submissions
-        : submissions.filter((submission) => submission.hackathonId === selectedHackathonId),
-    [selectedHackathonId, submissions],
-  )
-  const headerHackathon = useMemo(() => {
-    const hackathonIdForHeader =
-      location.pathname === '/submit' && selectedHackathonId === 'all' ? DEFAULT_HACKATHON_ID : selectedHackathonId
-    if (hackathonIdForHeader === 'all') return null
-    return hackathons.find((hackathon) => hackathon.id === hackathonIdForHeader) ?? null
-  }, [hackathons, location.pathname, selectedHackathonId])
+  const isHackathonListPage = location.pathname === '/home' || location.pathname === '/hackathons'
+  const currentHackathonPath = useMemo(() => {
+    const activeHackathonId = selectedHackathonId === 'all' ? DEFAULT_HACKATHON_ID : selectedHackathonId
+    return getHackathonPath(activeHackathonId)
+  }, [selectedHackathonId])
 
   function setSubmissionVoting(submissionId: string, isVoting: boolean) {
     if (isVoting) votingSubmissionIdsRef.current.add(submissionId)
@@ -1322,15 +1313,28 @@ function App() {
         for (const h of remoteHackathons) hackathonById.set(h.id, h)
         for (const h of localHackathons) if (!hackathonById.has(h.id)) hackathonById.set(h.id, h)
         for (const h of seededHackathons) if (!hackathonById.has(h.id)) hackathonById.set(h.id, h)
-        const mergedHackathons = Array.from(hackathonById.values()).sort(
-          (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
-        )
+        const seededById = new Map(seededHackathons.map((hackathon) => [hackathon.id, hackathon] as const))
+        const mergedHackathons = Array.from(hackathonById.values())
+          .filter((hackathon) => ALLOWED_HACKATHON_IDS.has(hackathon.id))
+          .map((hackathon) => {
+            const seededHackathon = seededById.get(hackathon.id)
+            if (!seededHackathon) return hackathon
+            return {
+              ...hackathon,
+              name: seededHackathon.name,
+              logoUrl: seededHackathon.logoUrl,
+            }
+          })
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
 
         // Merge submissions (remote + local + seeds)
         const submissionById = new Map<string, Submission>()
         for (const s of remoteSubmissions) submissionById.set(s.id, s)
         for (const s of localStoredSubmissions) if (!submissionById.has(s.id)) submissionById.set(s.id, s)
-        const mergedNoSeeds = Array.from(submissionById.values()).map((s) => ({ ...s, hackathonId: DEFAULT_HACKATHON_ID }))
+        const mergedNoSeeds = Array.from(submissionById.values()).map((s) => ({
+          ...s,
+          hackathonId: ALLOWED_HACKATHON_IDS.has(s.hackathonId) ? s.hackathonId : DEFAULT_HACKATHON_ID,
+        }))
         const byLink = new Set(mergedNoSeeds.map((s) => s.appLink))
         const missingSeeds = seedSubmissions.filter((s) => !byLink.has(s.appLink))
         const mergedSubmissions = [...missingSeeds, ...mergedNoSeeds].sort(
@@ -1416,6 +1420,12 @@ function App() {
   }, [hackathons, selectedHackathonId])
 
   useEffect(() => {
+    const hackathonIdFromPath = getHackathonIdFromPath(location.pathname)
+    if (!hackathonIdFromPath || selectedHackathonId === hackathonIdFromPath) return
+    setSelectedHackathonId(hackathonIdFromPath)
+  }, [location.pathname, selectedHackathonId])
+
+  useEffect(() => {
     try {
       localStorage.setItem(SELECTED_HACKATHON_STORAGE_KEY, selectedHackathonId)
     } catch {
@@ -1491,12 +1501,11 @@ function App() {
 
   return (
     <div className="page">
-      {user ? (
+      {user && !isAuthRecoveryRoute ? (
         <HeaderNav
           user={user}
-          variant={location.pathname === '/hackathons' ? 'hackathon' : 'full'}
-          hackathonLogoUrl={headerHackathon?.logoUrl ?? null}
-          hackathonName={headerHackathon?.name ?? null}
+          variant={isHackathonListPage ? 'hackathon' : 'full'}
+          currentHackathonPath={currentHackathonPath}
         />
       ) : null}
 
@@ -1507,7 +1516,7 @@ function App() {
           </div>
         )}
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/hackathons" replace /> : <LandingPage />} />
+          <Route path="/" element={user ? <Navigate to="/home" replace /> : <LandingPage />} />
           <Route
             path="/admin-login"
             element={
@@ -1530,27 +1539,41 @@ function App() {
           <Route path="/signup" element={<Navigate to="/" replace />} />
           <Route path="/forgot" element={<ForgotPasswordPage />} />
           <Route path="/reset" element={<ResetPasswordPage />} />
+          <Route path="/hackathons" element={<Navigate to="/home" replace />} />
           <Route
-            path="/hackathons"
+            path="/home"
             element={
               <RequireAuth user={user}>
                 <HackathonSelectPage
                   hackathons={hackathons}
                   selectedHackathonId={selectedHackathonId}
                   onSelectHackathon={(id) => setSelectedHackathonId(id)}
+                  getHackathonPath={getHackathonPath}
                 />
               </RequireAuth>
             }
           />
           <Route
-            path="/home"
+            path={AOAI_HACKATHON_PATH}
             element={
               <RequireAuth user={user}>
                 <SubmissionsPage
-                  submissions={visibleSubmissions}
-                  hackathons={hackathons}
-                  selectedHackathonId={selectedHackathonId}
-                  onSelectedHackathonChange={setSelectedHackathonId}
+                  submissions={submissions.filter((submission) => submission.hackathonId === DEFAULT_HACKATHON_ID)}
+                  submitPath={`${AOAI_HACKATHON_PATH}/submit`}
+                  onVote={handleVote}
+                  votingSubmissionIds={votingSubmissionIds}
+                  votedSubmissionIds={votedSubmissionIds}
+                />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path={GAINS_HACKATHON_PATH}
+            element={
+              <RequireAuth user={user}>
+                <SubmissionsPage
+                  submissions={submissions.filter((submission) => submission.hackathonId === GAINS_HACKATHON_ID)}
+                  submitPath={`${GAINS_HACKATHON_PATH}/submit`}
                   onVote={handleVote}
                   votingSubmissionIds={votingSubmissionIds}
                   votedSubmissionIds={votedSubmissionIds}
@@ -1566,14 +1589,28 @@ function App() {
               </RequireAuth>
             }
           />
+          <Route path="/submit" element={<Navigate to={`${currentHackathonPath}/submit`} replace />} />
           <Route
-            path="/submit"
+            path={`${AOAI_HACKATHON_PATH}/submit`}
             element={
               <RequireAuth user={user}>
                 <NewSubmissionPage
                   onCreate={(s) => setSubmissions((prev) => [s, ...prev])}
                   hackathons={hackathons}
-                  selectedHackathonId={selectedHackathonId === 'all' ? DEFAULT_HACKATHON_ID : selectedHackathonId}
+                  selectedHackathonId={DEFAULT_HACKATHON_ID}
+                  currentUserId={user?.id ?? null}
+                />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path={`${GAINS_HACKATHON_PATH}/submit`}
+            element={
+              <RequireAuth user={user}>
+                <NewSubmissionPage
+                  onCreate={(s) => setSubmissions((prev) => [s, ...prev])}
+                  hackathons={hackathons}
+                  selectedHackathonId={GAINS_HACKATHON_ID}
                   currentUserId={user?.id ?? null}
                 />
               </RequireAuth>

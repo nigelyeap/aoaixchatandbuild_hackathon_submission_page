@@ -100,19 +100,16 @@ export default function LandingPage() {
       <div className="w-full max-w-md">
         <div className="rounded-3xl border border-white/10 bg-black/35 shadow-[0_30px_90px_rgba(0,0,0,0.6)] backdrop-blur px-7 py-8">
           <div className="flex items-center justify-center">
-            <div className="h-16 w-16 rounded-2xl bg-white/5 ring-1 ring-white/10 grid place-items-center overflow-hidden">
+            <div className="grid place-items-center overflow-visible">
               <img
-                src="/assets/chatandbuild-logo.jpg"
+                src="/assets/chatandbuild-logo-horizontal.png"
                 alt="ChatAndBuild logo"
-                className="h-full w-full object-contain p-2"
+                className="h-24 sm:h-28 w-auto object-contain"
               />
             </div>
           </div>
 
           <div className="mt-5 text-center">
-            <div className="text-xs font-black tracking-[0.18em] uppercase text-violet-200/80">
-              AOAI x ChatAndBuild
-            </div>
             <h1 className="mt-2 text-2xl font-black tracking-tight">Hackathon Submission Portal</h1>
             <p className="mt-2 text-sm text-slate-300 font-semibold">
               {tab === 'signup' ? 'Create an account to continue.' : 'Log in to continue.'}
@@ -278,11 +275,6 @@ export default function LandingPage() {
                 </form>
               )}
 
-              <div className="mt-6 text-center">
-                <Link className="text-xs font-bold text-slate-400 hover:text-slate-200" to="#">
-                  Privacy
-                </Link>
-              </div>
             </>
           )}
         </div>
