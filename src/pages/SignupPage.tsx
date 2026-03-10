@@ -6,6 +6,25 @@ function getRedirectTo() {
   return window.location.origin
 }
 
+function getSignupErrorMessage(err: unknown) {
+  if (!err || typeof err !== 'object') return 'Sign up failed. Please check your details and try again.'
+  const maybeMessage = (err as { message?: unknown }).message
+  if (typeof maybeMessage !== 'string' || maybeMessage.trim().length === 0) {
+    return 'Sign up failed. Please check your details and try again.'
+  }
+  const message = maybeMessage.trim()
+  const lower = message.toLowerCase()
+
+  if (lower.includes('already registered') || lower.includes('already been registered')) {
+    return 'This email is already registered. Try logging in or use Forgot password.'
+  }
+  if (lower.includes('invalid email')) return 'Please enter a valid email address.'
+  if (lower.includes('rate limit') || lower.includes('too many requests')) {
+    return 'Too many attempts. Please wait a minute and try again.'
+  }
+  return message
+}
+
 export default function SignupPage() {
   const navigate = useNavigate()
   const [fullName, setFullName] = useState('')
@@ -55,7 +74,7 @@ export default function SignupPage() {
         setPassword('')
       } catch (err) {
         console.error(err)
-        setError('Sign up failed. Please try a different email or a stronger password.')
+        setError(getSignupErrorMessage(err))
       } finally {
         setBusy(false)
       }
