@@ -199,6 +199,7 @@ const seedSubmissions: Submission[] = [
     userId: null,
   },
 ]
+const EXAMPLE_SUBMISSION_IDS = new Set(seedSubmissions.map((submission) => submission.id))
 
 function screenshotUrl(targetUrl: string, opts?: { width?: number; height?: number }) {
   const w = opts?.width ?? 900
@@ -647,12 +648,14 @@ function HeaderNav({
 function SubmissionsPage({
   submissions,
   submitPath,
+  canSubmit,
   onVote,
   votingSubmissionIds,
   votedSubmissionIds,
 }: {
   submissions: Submission[]
   submitPath: string
+  canSubmit: boolean
   onVote: (submissionId: string) => void
   votingSubmissionIds: ReadonlySet<string>
   votedSubmissionIds: ReadonlySet<string>
@@ -703,9 +706,15 @@ function SubmissionsPage({
 
   return (
     <>
-      <Link className="btn newSubmissionHeroBtn" to={submitPath}>
-        New submission
-      </Link>
+      {canSubmit ? (
+        <Link className="btn newSubmissionHeroBtn" to={submitPath}>
+          New submission
+        </Link>
+      ) : (
+        <div className="callout">
+          This hackathon is closed for new submissions. You can still view entries and vote.
+        </div>
+      )}
 
       <section className="card">
         <div className="listHeader">
@@ -919,6 +928,7 @@ function NewSubmissionPage({
   currentUserId: string | null
 }) {
   const [justSavedId, setJustSavedId] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
 
   const [form, setForm] = useState<FormState>({
@@ -984,6 +994,7 @@ function NewSubmissionPage({
 
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setSubmitError(null)
 
     const nextTouched: Partial<Record<keyof FormState, boolean>> = {
       participantName: true,
@@ -996,7 +1007,22 @@ function NewSubmissionPage({
     setTouched(nextTouched)
 
     const currentErrors = validate(form, acceptingHackathons)
-    if (Object.keys(currentErrors).length > 0) return
+    if (Object.keys(currentErrors).length > 0) {
+      const firstError =
+        currentErrors.hackathonId ??
+        currentErrors.participantName ??
+        currentErrors.appName ??
+        currentErrors.appDescription ??
+        currentErrors.problemDescription ??
+        currentErrors.appLink ??
+        'Please review the highlighted fields and try again.'
+      setSubmitError(firstError)
+      return
+    }
+    if (!currentUserId) {
+      setSubmitError('Your session has expired. Please log in again before submitting.')
+      return
+    }
 
     const now = new Date()
     const submission: Submission = {
@@ -1012,10 +1038,15 @@ function NewSubmissionPage({
       userId: currentUserId,
     }
 
-    onCreate(submission)
-    setJustSavedId(submission.id)
-    resetForm()
-    window.setTimeout(() => setJustSavedId((id) => (id === submission.id ? null : id)), 6000)
+    try {
+      onCreate(submission)
+      setJustSavedId(submission.id)
+      resetForm()
+      window.setTimeout(() => setJustSavedId((id) => (id === submission.id ? null : id)), 6000)
+    } catch (err) {
+      console.error(err)
+      setSubmitError('Could not submit right now. Please try again in a moment.')
+    }
   }
 
   return (
@@ -1158,6 +1189,12 @@ function NewSubmissionPage({
             )}
           </div>
         </div>
+
+        {submitError && (
+          <div className="callout" role="status">
+            {submitError}
+          </div>
+        )}
 
         {justSavedId && (
           <div className="callout success" role="status">
@@ -1375,20 +1412,17 @@ function App() {
 
         // Merge submissions (remote + local + seeds)
         const submissionById = new Map<string, Submission>()
-        for (const s of remoteSubmissions) submissionById.set(s.id, s)
-        for (const s of localStoredSubmissions) if (!submissionById.has(s.id)) submissionById.set(s.id, s)
+        for (const s of remoteSubmissions) if (!EXAMPLE_SUBMISSION_IDS.has(s.id)) submissionById.set(s.id, s)
+        for (const s of localStoredSubmissions) if (!submissionById.has(s.id) && !EXAMPLE_SUBMISSION_IDS.has(s.id)) submissionById.set(s.id, s)
         const mergedNoSeeds = Array.from(submissionById.values()).map((s) => ({
           ...s,
           hackathonId: ALLOWED_HACKATHON_IDS.has(s.hackathonId) ? s.hackathonId : DEFAULT_HACKATHON_ID,
         }))
-        const byLink = new Set(mergedNoSeeds.map((s) => s.appLink))
-        const missingSeeds = seedSubmissions.filter((s) => !byLink.has(s.appLink))
-        const mergedSubmissions = [...missingSeeds, ...mergedNoSeeds].sort(
-          (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
-        )
+        const mergedSubmissions = mergedNoSeeds.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
 
         // Persist merged state back to DB (idempotent)
         await db.upsertHackathons(mergedHackathons)
+        await db.deleteSubmissions(Array.from(EXAMPLE_SUBMISSION_IDS))
         await db.upsertSubmissions(mergedSubmissions)
 
         if (cancelled) return false
@@ -1423,9 +1457,7 @@ function App() {
         // ignore corrupted storage
       }
 
-      const byLink = new Set(stored.map((s) => s.appLink))
-      const seeded = seedSubmissions.filter((s) => !byLink.has(s.appLink))
-      setSubmissions(seeded.length > 0 ? [...seeded, ...stored] : stored)
+      setSubmissions(stored.filter((submission) => !EXAMPLE_SUBMISSION_IDS.has(submission.id)))
 
       setHackathons(getHackathons())
       setHasLoadedHackathons(true)
@@ -1525,13 +1557,13 @@ function App() {
         const remoteSubmissions = await db.listSubmissions()
         if (cancelled) return
 
-        const normalizedRemote = remoteSubmissions.map((submission) => ({
-          ...submission,
-          hackathonId: ALLOWED_HACKATHON_IDS.has(submission.hackathonId) ? submission.hackathonId : DEFAULT_HACKATHON_ID,
-        }))
-        const byLink = new Set(normalizedRemote.map((submission) => submission.appLink))
-        const missingSeeds = seedSubmissions.filter((submission) => !byLink.has(submission.appLink))
-        const mergedSubmissions = [...missingSeeds, ...normalizedRemote].sort(
+        const normalizedRemote = remoteSubmissions
+          .filter((submission) => !EXAMPLE_SUBMISSION_IDS.has(submission.id))
+          .map((submission) => ({
+            ...submission,
+            hackathonId: ALLOWED_HACKATHON_IDS.has(submission.hackathonId) ? submission.hackathonId : DEFAULT_HACKATHON_ID,
+          }))
+        const mergedSubmissions = normalizedRemote.sort(
           (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
         )
         setSubmissions(mergedSubmissions)
@@ -1611,7 +1643,12 @@ function App() {
             path="/admin-dashboard"
             element={
               <RequireAdminAuth isAdminAuthenticated={isAdminAuthenticated}>
-                <AdminDashboardPage onSignOut={() => setIsAdminAuthenticated(false)} />
+                <AdminDashboardPage
+                  onSignOut={() => setIsAdminAuthenticated(false)}
+                  submissions={submissions}
+                  setSubmissions={setSubmissions}
+                  hackathons={hackathons}
+                />
               </RequireAdminAuth>
             }
           />
@@ -1640,6 +1677,12 @@ function App() {
                 <SubmissionsPage
                   submissions={submissions.filter((submission) => submission.hackathonId === DEFAULT_HACKATHON_ID)}
                   submitPath={`${AOAI_HACKATHON_PATH}/submit`}
+                  canSubmit={
+                    (() => {
+                      const hackathon = hackathons.find((item) => item.id === DEFAULT_HACKATHON_ID)
+                      return hackathon ? isHackathonOpen(hackathon, Date.now()) : false
+                    })()
+                  }
                   onVote={handleVote}
                   votingSubmissionIds={votingSubmissionIds}
                   votedSubmissionIds={votedSubmissionIds}
@@ -1654,6 +1697,12 @@ function App() {
                 <SubmissionsPage
                   submissions={submissions.filter((submission) => submission.hackathonId === GAINS_HACKATHON_ID)}
                   submitPath={`${GAINS_HACKATHON_PATH}/submit`}
+                  canSubmit={
+                    (() => {
+                      const hackathon = hackathons.find((item) => item.id === GAINS_HACKATHON_ID)
+                      return hackathon ? isHackathonOpen(hackathon, Date.now()) : false
+                    })()
+                  }
                   onVote={handleVote}
                   votingSubmissionIds={votingSubmissionIds}
                   votedSubmissionIds={votedSubmissionIds}

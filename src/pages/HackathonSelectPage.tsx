@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Hackathon } from '../App'
 
@@ -33,6 +34,54 @@ export default function HackathonSelectPage({
   getHackathonPath: (id: string) => string
 }) {
   const navigate = useNavigate()
+  const { openHackathons, pastHackathons } = useMemo(() => {
+    const open = hackathons.filter((hackathon) => isOpen(hackathon))
+    const past = hackathons.filter((hackathon) => !isOpen(hackathon))
+    return { openHackathons: open, pastHackathons: past }
+  }, [hackathons])
+
+  function renderHackathonCard(hackathon: Hackathon, isPast: boolean) {
+    return (
+      <button
+        key={hackathon.id}
+        type="button"
+        className={isPast ? 'hackathonHero hackathonHeroPast' : 'hackathonHero'}
+        onClick={() => {
+          onSelectHackathon(hackathon.id)
+          navigate(getHackathonPath(hackathon.id))
+        }}
+      >
+        <div className="hackathonHeroTop">
+          <div>
+            {hackathon.logoUrl && (
+              <div className="hackathonHeroLogoWrap">
+                <img className="hackathonHeroLogo" src={hackathon.logoUrl} alt={`${hackathon.name} logo`} />
+              </div>
+            )}
+            <div className="hackathonHeroTitle">{hackathon.name}</div>
+            <div className="hackathonHeroMeta">
+              <span className={`statusTag ${isPast ? 'statusClosed' : 'statusOpen'}`}>{isPast ? 'Closed' : 'Open'}</span>
+              <span className="metaDot" aria-hidden="true">
+                ·
+              </span>
+              <span>{formatDateRange(hackathon)}</span>
+              {selectedHackathonId === hackathon.id && (
+                <>
+                  <span className="metaDot" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="pill">Selected</span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="hackathonHeroAction" aria-hidden="true">
+            Enter
+          </div>
+        </div>
+      </button>
+    )
+  }
 
   return (
     <section className="card">
@@ -43,48 +92,25 @@ export default function HackathonSelectPage({
       {hackathons.length === 0 ? (
         <div className="empty">No hackathons available.</div>
       ) : (
-        hackathons.map((hackathon) => (
-          <button
-            key={hackathon.id}
-            type="button"
-            className="hackathonHero"
-            onClick={() => {
-              onSelectHackathon(hackathon.id)
-              navigate(getHackathonPath(hackathon.id))
-            }}
-          >
-            <div className="hackathonHeroTop">
-              <div>
-                {hackathon.logoUrl && (
-                  <div className="hackathonHeroLogoWrap">
-                    <img className="hackathonHeroLogo" src={hackathon.logoUrl} alt={`${hackathon.name} logo`} />
-                  </div>
-                )}
-                <div className="hackathonHeroTitle">{hackathon.name}</div>
-                <div className="hackathonHeroMeta">
-                  <span className={`statusTag ${isOpen(hackathon) ? 'statusOpen' : 'statusClosed'}`}>
-                    {isOpen(hackathon) ? 'Open' : 'Closed'}
-                  </span>
-                  <span className="metaDot" aria-hidden="true">
-                    ·
-                  </span>
-                  <span>{formatDateRange(hackathon)}</span>
-                  {selectedHackathonId === hackathon.id && (
-                    <>
-                      <span className="metaDot" aria-hidden="true">
-                        ·
-                      </span>
-                      <span className="pill">Selected</span>
-                    </>
-                  )}
-                </div>
+        <>
+          {openHackathons.length === 0 ? (
+            <div className="empty">No ongoing hackathons right now.</div>
+          ) : (
+            openHackathons.map((hackathon) => renderHackathonCard(hackathon, false))
+          )}
+
+          {pastHackathons.length > 0 && (
+            <>
+              <div className="listHeader mt-8">
+                <h3 className="cardTitle cardTitleHero">Past hackathons</h3>
               </div>
-              <div className="hackathonHeroAction" aria-hidden="true">
-                Enter
-              </div>
-            </div>
-          </button>
-        ))
+              <p className="cardHint">
+                You can still enter to view submissions and vote, but new submissions are closed.
+              </p>
+              {pastHackathons.map((hackathon) => renderHackathonCard(hackathon, true))}
+            </>
+          )}
+        </>
       )}
 
     </section>
