@@ -2,8 +2,14 @@ import { useNavigate } from 'react-router-dom'
 import type { Hackathon } from '../App'
 
 function formatDateRange(h: Hackathon) {
-  const start = new Date(h.startsAt).toLocaleDateString()
-  const end = new Date(h.endsAt).toLocaleDateString()
+  const dateFormat: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'UTC',
+  }
+  const start = new Date(h.startsAt).toLocaleDateString(undefined, dateFormat)
+  const end = new Date(h.endsAt).toLocaleDateString(undefined, dateFormat)
   return `${start} – ${end}`
 }
 

@@ -572,9 +572,9 @@ function HeaderNav({
       <div className="headerInner">
         <div className="brand">
           <div className="brandMarks">
-            <div className="brandMark">
+            <Link className="brandMark" to="/home" aria-label="Go to home page">
               <img className="brandLogo brandLogoCnb" src={CHATANDBUILD_LOGO_URL} alt="ChatAndBuild logo" />
-            </div>
+            </Link>
           </div>
           <div>
             {onAdminPage ? (
