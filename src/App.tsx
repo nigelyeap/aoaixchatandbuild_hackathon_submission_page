@@ -518,7 +518,22 @@ function submissionChanged(a: Submission, b: Submission) {
   )
 }
 
-function RequireAuth({ user, children }: { user: User | null; children: React.ReactNode }) {
+function RequireAuth({
+  user,
+  authReady,
+  children,
+}: {
+  user: User | null
+  authReady: boolean
+  children: React.ReactNode
+}) {
+  if (!authReady) {
+    return (
+      <section className="card">
+        <div className="empty">Restoring your session…</div>
+      </section>
+    )
+  }
   if (!user) return <Navigate to="/" replace />
   return <>{children}</>
 }
@@ -1232,6 +1247,7 @@ function App() {
   const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
   const [user, setUser] = useState<User | null>(null)
+  const [authReady, setAuthReady] = useState<boolean>(() => !supabase)
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     try {
       return localStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === 'true'
@@ -1336,17 +1352,22 @@ function App() {
   }, [user?.id, votedSubmissionIds])
 
   useEffect(() => {
-    if (!supabase) return
+    if (!supabase) {
+      setAuthReady(true)
+      return
+    }
 
     let cancelled = false
     void supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return
       setUser(data.session?.user ?? null)
+      setAuthReady(true)
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return
       setUser(session?.user ?? null)
+      setAuthReady(true)
     })
 
     return () => {
@@ -1660,7 +1681,7 @@ function App() {
           <Route
             path="/home"
             element={
-              <RequireAuth user={user}>
+              <RequireAuth user={user} authReady={authReady}>
                 <HackathonSelectPage
                   hackathons={hackathons}
                   selectedHackathonId={selectedHackathonId}
@@ -1673,7 +1694,7 @@ function App() {
           <Route
             path={AOAI_HACKATHON_PATH}
             element={
-              <RequireAuth user={user}>
+              <RequireAuth user={user} authReady={authReady}>
                 <SubmissionsPage
                   submissions={submissions.filter((submission) => submission.hackathonId === DEFAULT_HACKATHON_ID)}
                   submitPath={`${AOAI_HACKATHON_PATH}/submit`}
@@ -1693,7 +1714,7 @@ function App() {
           <Route
             path={GAINS_HACKATHON_PATH}
             element={
-              <RequireAuth user={user}>
+              <RequireAuth user={user} authReady={authReady}>
                 <SubmissionsPage
                   submissions={submissions.filter((submission) => submission.hackathonId === GAINS_HACKATHON_ID)}
                   submitPath={`${GAINS_HACKATHON_PATH}/submit`}
@@ -1713,7 +1734,7 @@ function App() {
           <Route
             path="/profile"
             element={
-              <RequireAuth user={user}>
+              <RequireAuth user={user} authReady={authReady}>
                 <ProfilePage
                   user={user}
                   submissions={submissions}
@@ -1727,7 +1748,7 @@ function App() {
           <Route
             path={`${AOAI_HACKATHON_PATH}/submit`}
             element={
-              <RequireAuth user={user}>
+              <RequireAuth user={user} authReady={authReady}>
                 <NewSubmissionPage
                   onCreate={(s) => setSubmissions((prev) => [s, ...prev])}
                   hackathons={hackathons}
@@ -1740,7 +1761,7 @@ function App() {
           <Route
             path={`${GAINS_HACKATHON_PATH}/submit`}
             element={
-              <RequireAuth user={user}>
+              <RequireAuth user={user} authReady={authReady}>
                 <NewSubmissionPage
                   onCreate={(s) => setSubmissions((prev) => [s, ...prev])}
                   hackathons={hackathons}
@@ -1753,7 +1774,7 @@ function App() {
           <Route
             path="/admin"
             element={
-              <RequireAuth user={user}>
+              <RequireAuth user={user} authReady={authReady}>
                 <AdminPage
                   submissions={submissions}
                   setSubmissions={setSubmissions}
