@@ -293,7 +293,7 @@
   }
 
   .featuredNavHotspot {
-    @apply absolute top-0 bottom-0 z-10 w-[18%] border-0 bg-transparent p-0;
+    @apply absolute top-0 z-[5] h-[52%] w-[18%] border-0 bg-transparent p-0;
   }
 
   .featuredNavHotspotLeft {
@@ -344,6 +344,17 @@
 
   .blockText {
     @apply mt-2 text-sm text-slate-200/90 font-semibold leading-relaxed;
+  }
+
+  .blockTextClamp3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .inlineToggle {
+    @apply relative z-20 text-violet-200 font-black hover:underline;
   }
 
   .featuredDots {

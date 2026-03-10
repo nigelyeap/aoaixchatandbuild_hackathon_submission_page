@@ -738,6 +738,9 @@ function SubmissionsPage({
   }, [sortedSubmissions])
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [carouselNonce, setCarouselNonce] = useState(0)
+  const [expandedFeaturedTextKeys, setExpandedFeaturedTextKeys] = useState<Set<string>>(new Set())
+  const [featuredTextOverflowKeys, setFeaturedTextOverflowKeys] = useState<Set<string>>(new Set())
+  const featuredTextRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const featuredSignature = useMemo(
     () => featured.map((submission) => `${submission.id}:${submission.votes}`).join('|'),
     [featured],
@@ -765,6 +768,47 @@ function SubmissionsPage({
     setFeaturedIndex((index) => (index + delta + featured.length) % featured.length)
     setCarouselNonce((n) => n + 1)
   }
+
+  function isFeaturedTextExpanded(submissionId: string, section: 'app' | 'problem') {
+    return expandedFeaturedTextKeys.has(`${submissionId}:${section}`)
+  }
+
+  function isFeaturedTextOverflowing(submissionId: string, section: 'app' | 'problem') {
+    return featuredTextOverflowKeys.has(`${submissionId}:${section}`)
+  }
+
+  function toggleFeaturedText(submissionId: string, section: 'app' | 'problem') {
+    const key = `${submissionId}:${section}`
+    setExpandedFeaturedTextKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  useEffect(() => {
+    const recomputeOverflow = () => {
+      const next = new Set<string>()
+      for (const submission of featured) {
+        for (const section of ['app', 'problem'] as const) {
+          const key = `${submission.id}:${section}`
+          const node = featuredTextRefs.current[key]
+          if (!node) continue
+          if (node.scrollHeight - node.clientHeight > 1) next.add(key)
+        }
+      }
+      setFeaturedTextOverflowKeys(next)
+    }
+
+    const frame = window.requestAnimationFrame(recomputeOverflow)
+    const onResize = () => recomputeOverflow()
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [featured, featuredIndex])
 
   return (
     <>
@@ -893,11 +937,43 @@ function SubmissionsPage({
                       <div className="submissionBody">
                         <div className="block">
                           <div className="blockLabel">Brief description</div>
-                          <div className="blockText">{s.appDescription}</div>
+                          <div
+                            ref={(node) => {
+                              featuredTextRefs.current[`${s.id}:app`] = node
+                            }}
+                            className={isFeaturedTextExpanded(s.id, 'app') ? 'blockText' : 'blockText blockTextClamp3'}
+                          >
+                            {s.appDescription}
+                          </div>
+                          {(isFeaturedTextExpanded(s.id, 'app') || isFeaturedTextOverflowing(s.id, 'app')) && (
+                            <button
+                              type="button"
+                              className="inlineToggle"
+                              onClick={() => toggleFeaturedText(s.id, 'app')}
+                            >
+                              {isFeaturedTextExpanded(s.id, 'app') ? 'show less' : 'show more'}
+                            </button>
+                          )}
                         </div>
                         <div className="block">
                           <div className="blockLabel">Problem addressed</div>
-                          <div className="blockText">{s.problemDescription}</div>
+                          <div
+                            ref={(node) => {
+                              featuredTextRefs.current[`${s.id}:problem`] = node
+                            }}
+                            className={isFeaturedTextExpanded(s.id, 'problem') ? 'blockText' : 'blockText blockTextClamp3'}
+                          >
+                            {s.problemDescription}
+                          </div>
+                          {(isFeaturedTextExpanded(s.id, 'problem') || isFeaturedTextOverflowing(s.id, 'problem')) && (
+                            <button
+                              type="button"
+                              className="inlineToggle"
+                              onClick={() => toggleFeaturedText(s.id, 'problem')}
+                            >
+                              {isFeaturedTextExpanded(s.id, 'problem') ? 'show less' : 'show more'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </article>
