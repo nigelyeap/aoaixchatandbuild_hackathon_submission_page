@@ -390,12 +390,23 @@ function getHackathons() {
           if (!seededHackathon) return hackathon
 
           const nextLogoUrl = seededHackathon.logoUrl
-          if (hackathon.name === seededHackathon.name && nextLogoUrl === hackathon.logoUrl) return hackathon
+          if (
+            hackathon.name === seededHackathon.name &&
+            nextLogoUrl === hackathon.logoUrl &&
+            hackathon.startsAt === seededHackathon.startsAt &&
+            hackathon.endsAt === seededHackathon.endsAt &&
+            hackathon.acceptingSubmissions === seededHackathon.acceptingSubmissions
+          ) {
+            return hackathon
+          }
 
           return {
             ...hackathon,
             name: seededHackathon.name,
             logoUrl: nextLogoUrl,
+            startsAt: seededHackathon.startsAt,
+            endsAt: seededHackathon.endsAt,
+            acceptingSubmissions: seededHackathon.acceptingSubmissions,
           }
         })
 
@@ -1355,6 +1366,9 @@ function App() {
               ...hackathon,
               name: seededHackathon.name,
               logoUrl: seededHackathon.logoUrl,
+              startsAt: seededHackathon.startsAt,
+              endsAt: seededHackathon.endsAt,
+              acceptingSubmissions: seededHackathon.acceptingSubmissions,
             }
           })
           .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
@@ -1501,6 +1515,40 @@ function App() {
       }
     })()
   }, [submissions, hasLoadedFromDb])
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !hasLoadedFromDb) return
+
+    let cancelled = false
+    const refresh = async () => {
+      try {
+        const remoteSubmissions = await db.listSubmissions()
+        if (cancelled) return
+
+        const normalizedRemote = remoteSubmissions.map((submission) => ({
+          ...submission,
+          hackathonId: ALLOWED_HACKATHON_IDS.has(submission.hackathonId) ? submission.hackathonId : DEFAULT_HACKATHON_ID,
+        }))
+        const byLink = new Set(normalizedRemote.map((submission) => submission.appLink))
+        const missingSeeds = seedSubmissions.filter((submission) => !byLink.has(submission.appLink))
+        const mergedSubmissions = [...missingSeeds, ...normalizedRemote].sort(
+          (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+        )
+        setSubmissions(mergedSubmissions)
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    const id = window.setInterval(() => {
+      void refresh()
+    }, 8000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [hasLoadedFromDb])
 
   useEffect(() => {
     if (!isSupabaseConfigured || !hasLoadedFromDb) return
