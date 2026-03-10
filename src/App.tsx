@@ -844,20 +844,22 @@ function SubmissionsPage({
                             <a className="link" href={s.appLink} target="_blank" rel="noopener noreferrer">
                               Open app
                             </a>
-                            {currentUserId && s.userId === currentUserId && (
-                              <button
-                                className="btn btnGhost voteButton"
-                                type="button"
-                                onClick={() => {
-                                  if (!window.confirm('Delete this submission from public view?')) return
-                                  onHideSubmission(s.id)
-                                }}
-                              >
-                                Delete my submission
-                              </button>
-                            )}
                           </div>
                         </div>
+                        {currentUserId && s.userId === currentUserId && (
+                          <div className="submissionActions">
+                            <button
+                              className="btn btnDanger voteButton"
+                              type="button"
+                              onClick={() => {
+                                if (!window.confirm('Delete this submission from public view?')) return
+                                onHideSubmission(s.id)
+                              }}
+                            >
+                              Delete my submission
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       <a
