@@ -20,12 +20,22 @@ export type Submission = {
   appDescription: string
   problemDescription: string
   appLink: string
+  track: SubmissionTrack
   hackathonId: string
   votes: number
   userId: string | null
+  isHidden: boolean
+  hiddenAt: string | null
+  hiddenByUserId: string | null
 }
 
-type FormState = Omit<Submission, 'id' | 'createdAt' | 'votes' | 'userId'>
+export type SubmissionTrack =
+  | 'Weekly Workflow'
+  | 'Kill One Manual Repetitive Task'
+  | 'AOAI Shared Utility'
+  | 'Other'
+
+type FormState = Omit<Submission, 'id' | 'createdAt' | 'votes' | 'userId' | 'isHidden' | 'hiddenAt' | 'hiddenByUserId'>
 
 export type Hackathon = {
   id: string
@@ -58,8 +68,21 @@ const SEED_SKILLBRIDGE_LINK = 'https://skillbridge-mentor.chatand.build/'
 const SEED_GREEN_ROUTE_LINK = 'https://greenroute-transit.chatand.build/'
 const SEED_ALAMAK_BILL_LINK = 'https://alamak-bill-1762324529904.chatand.build/'
 const SEED_SUCCESSION_PLAN_LINK = 'https://business-succession-planning-1762173000355.chatand.build/'
+const SUBMISSION_TRACKS: SubmissionTrack[] = [
+  'Weekly Workflow',
+  'Kill One Manual Repetitive Task',
+  'AOAI Shared Utility',
+  'Other',
+]
+const SUBMISSION_TRACK_SET = new Set<SubmissionTrack>(SUBMISSION_TRACKS)
+const SUBMISSION_TRACK_GUIDE: Record<SubmissionTrack, string> = {
+  'Weekly Workflow': 'Build a reusable weekly template and checklist.',
+  'Kill One Manual Repetitive Task': 'Automate one repetitive task with before/after proof.',
+  'AOAI Shared Utility': 'Build a shareable utility template others can reuse.',
+  Other: 'Use this if your project does not fit the listed tracks.',
+}
 
-const seedSubmissions: Submission[] = [
+const seedSubmissions: Submission[] = ([
   {
     id: 'seed_succession_plan_builder',
     createdAt: '2026-03-04T00:00:00.000Z',
@@ -198,7 +221,13 @@ const seedSubmissions: Submission[] = [
     votes: 0,
     userId: null,
   },
-]
+  ] as Array<Omit<Submission, 'track' | 'isHidden' | 'hiddenAt' | 'hiddenByUserId'>>).map((submission) => ({
+  ...submission,
+  track: 'Other',
+  isHidden: false,
+  hiddenAt: null,
+  hiddenByUserId: null,
+}))
 const EXAMPLE_SUBMISSION_IDS = new Set(seedSubmissions.map((submission) => submission.id))
 
 function screenshotUrl(targetUrl: string, opts?: { width?: number; height?: number }) {
@@ -235,6 +264,9 @@ function validate(state: FormState, acceptingHackathons: Hackathon[]) {
 
   if (!state.participantName.trim()) errors.participantName = 'Participant name is required.'
   if (!state.appName.trim()) errors.appName = 'App name is required.'
+  if (!SUBMISSION_TRACK_SET.has(state.track as SubmissionTrack)) {
+    errors.track = 'Please choose a track.'
+  }
   if (acceptingHackathons.length === 0) {
     errors.hackathonId = 'No hackathons are currently accepting submissions.'
   } else if (!state.hackathonId) {
@@ -485,12 +517,19 @@ function normalizeStoredSubmission(value: unknown): Submission | null {
     appDescription: submission.appDescription,
     problemDescription: submission.problemDescription,
     appLink: submission.appLink,
+    track:
+      typeof submission.track === 'string' && SUBMISSION_TRACK_SET.has(submission.track as SubmissionTrack)
+        ? (submission.track as SubmissionTrack)
+        : 'Other',
     hackathonId:
       typeof submission.hackathonId === 'string' && ALLOWED_HACKATHON_IDS.has(submission.hackathonId)
         ? submission.hackathonId
         : DEFAULT_HACKATHON_ID,
     votes: typeof submission.votes === 'number' && Number.isFinite(submission.votes) ? submission.votes : 0,
     userId: typeof submission.userId === 'string' ? submission.userId : null,
+    isHidden: submission.isHidden === true,
+    hiddenAt: typeof submission.hiddenAt === 'string' ? submission.hiddenAt : null,
+    hiddenByUserId: typeof submission.hiddenByUserId === 'string' ? submission.hiddenByUserId : null,
   }
 }
 
@@ -513,8 +552,12 @@ function submissionChanged(a: Submission, b: Submission) {
     a.appDescription !== b.appDescription ||
     a.problemDescription !== b.problemDescription ||
     a.appLink !== b.appLink ||
+    a.track !== b.track ||
     a.hackathonId !== b.hackathonId ||
     a.votes !== b.votes
+    || a.isHidden !== b.isHidden
+    || a.hiddenAt !== b.hiddenAt
+    || a.hiddenByUserId !== b.hiddenByUserId
   )
 }
 
@@ -664,6 +707,8 @@ function SubmissionsPage({
   submissions,
   submitPath,
   canSubmit,
+  currentUserId,
+  onHideSubmission,
   onVote,
   votingSubmissionIds,
   votedSubmissionIds,
@@ -671,6 +716,8 @@ function SubmissionsPage({
   submissions: Submission[]
   submitPath: string
   canSubmit: boolean
+  currentUserId: string | null
+  onHideSubmission: (submissionId: string) => void
   onVote: (submissionId: string) => void
   votingSubmissionIds: ReadonlySet<string>
   votedSubmissionIds: ReadonlySet<string>
@@ -771,6 +818,7 @@ function SubmissionsPage({
                           <a className="submissionTitleLink" href={s.appLink} target="_blank" rel="noopener noreferrer">
                             <div className="submissionTitle">{s.appName}</div>
                           </a>
+                          <div className="trackBadge">{s.track}</div>
                           <div className="submissionMeta">
                             <span className="metaItem">{s.participantName}</span>
                             <span className="metaDot" aria-hidden="true">
@@ -796,6 +844,18 @@ function SubmissionsPage({
                             <a className="link" href={s.appLink} target="_blank" rel="noopener noreferrer">
                               Open app
                             </a>
+                            {currentUserId && s.userId === currentUserId && (
+                              <button
+                                className="btn btnGhost voteButton"
+                                type="button"
+                                onClick={() => {
+                                  if (!window.confirm('Delete this submission from public view?')) return
+                                  onHideSubmission(s.id)
+                                }}
+                              >
+                                Delete my submission
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -879,6 +939,7 @@ function SubmissionsPage({
                 <div className="compactTop">
                   <div className="compactMain">
                     <div className="compactTitle">{s.appName}</div>
+                    <div className="trackBadge trackBadgeCompact">{s.track}</div>
                     <div className="compactMeta">
                       <span className="compactBy">by {s.participantName}</span>
                     </div>
@@ -913,14 +974,28 @@ function SubmissionsPage({
 
                 <div className="compactFooter">
                   <span className="compactVotes">{s.votes} votes</span>
-                  <button
-                    className="btn btnGhost compactVoteButton"
-                    type="button"
-                    onClick={() => onVote(s.id)}
-                    disabled={votingSubmissionIds.has(s.id) || votedSubmissionIds.has(s.id)}
-                  >
-                    {votingSubmissionIds.has(s.id) ? 'Voting...' : votedSubmissionIds.has(s.id) ? 'Voted' : 'Vote'}
-                  </button>
+                  <div className="actions !mt-0">
+                    <button
+                      className="btn btnGhost compactVoteButton"
+                      type="button"
+                      onClick={() => onVote(s.id)}
+                      disabled={votingSubmissionIds.has(s.id) || votedSubmissionIds.has(s.id)}
+                    >
+                      {votingSubmissionIds.has(s.id) ? 'Voting...' : votedSubmissionIds.has(s.id) ? 'Voted' : 'Vote'}
+                    </button>
+                    {currentUserId && s.userId === currentUserId && (
+                      <button
+                        className="btn btnGhost compactVoteButton"
+                        type="button"
+                        onClick={() => {
+                          if (!window.confirm('Delete this submission from public view?')) return
+                          onHideSubmission(s.id)
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               </article>
             ))}
@@ -949,6 +1024,7 @@ function NewSubmissionPage({
   const [form, setForm] = useState<FormState>({
     participantName: '',
     appName: '',
+    track: '' as SubmissionTrack,
     hackathonId: '',
     appDescription: '',
     problemDescription: '',
@@ -981,6 +1057,10 @@ function NewSubmissionPage({
   const errors = useMemo(() => validate(form, acceptingHackathons), [form, acceptingHackathons])
   const appDescWords = useMemo(() => wordCount(form.appDescription), [form.appDescription])
   const problemWords = useMemo(() => wordCount(form.problemDescription), [form.problemDescription])
+  const selectedTrackGuide = useMemo(
+    () => (SUBMISSION_TRACK_SET.has(form.track as SubmissionTrack) ? SUBMISSION_TRACK_GUIDE[form.track as SubmissionTrack] : null),
+    [form.track],
+  )
   const hardBlocked = appDescWords > 100 || problemWords > 200 || acceptingHackathons.length === 0
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -999,6 +1079,7 @@ function NewSubmissionPage({
     setForm({
       participantName: '',
       appName: '',
+      track: '' as SubmissionTrack,
       hackathonId: '',
       appDescription: '',
       problemDescription: '',
@@ -1014,6 +1095,7 @@ function NewSubmissionPage({
     const nextTouched: Partial<Record<keyof FormState, boolean>> = {
       participantName: true,
       appName: true,
+      track: true,
       hackathonId: true,
       appDescription: true,
       problemDescription: true,
@@ -1027,6 +1109,7 @@ function NewSubmissionPage({
         currentErrors.hackathonId ??
         currentErrors.participantName ??
         currentErrors.appName ??
+        currentErrors.track ??
         currentErrors.appDescription ??
         currentErrors.problemDescription ??
         currentErrors.appLink ??
@@ -1048,9 +1131,13 @@ function NewSubmissionPage({
       appDescription: form.appDescription.trim(),
       problemDescription: form.problemDescription.trim(),
       appLink: normalizeUrl(form.appLink),
+      track: form.track,
       hackathonId: form.hackathonId,
       votes: 0,
       userId: currentUserId,
+      isHidden: false,
+      hiddenAt: null,
+      hiddenByUserId: null,
     }
 
     try {
@@ -1114,6 +1201,34 @@ function NewSubmissionPage({
                 {errors.appName}
               </div>
             )}
+          </div>
+
+          <div className="field">
+            <label htmlFor="submissionTrack">
+              Track <span className="req">*</span>
+            </label>
+            <select
+              id="submissionTrack"
+              name="submissionTrack"
+              value={form.track}
+              onChange={(e) => setField('track', e.target.value as SubmissionTrack)}
+              onBlur={() => onBlur('track')}
+              aria-invalid={showError('track')}
+              aria-describedby={showError('track') ? 'submissionTrackError' : undefined}
+            >
+              <option value="">Select a track</option>
+              {SUBMISSION_TRACKS.map((track) => (
+                <option key={track} value={track}>
+                  {track}
+                </option>
+              ))}
+            </select>
+            {showError('track') && (
+              <div className="error" id="submissionTrackError">
+                {errors.track}
+              </div>
+            )}
+            {selectedTrackGuide && <div className="helpText mt-2">{selectedTrackGuide}</div>}
           </div>
 
           <div className="field span2">
@@ -1312,6 +1427,23 @@ function App() {
       ),
     )
     markSubmissionAsVoted(submissionId)
+  }
+
+  function hideOwnSubmission(submissionId: string) {
+    if (!user?.id) return
+    const hiddenAt = new Date().toISOString()
+    setSubmissions((prev) =>
+      prev.map((submission) =>
+        submission.id === submissionId && submission.userId === user.id
+          ? {
+              ...submission,
+              isHidden: true,
+              hiddenAt,
+              hiddenByUserId: user.id,
+            }
+          : submission,
+      ),
+    )
   }
 
   useEffect(() => {
@@ -1696,7 +1828,7 @@ function App() {
             element={
               <RequireAuth user={user} authReady={authReady}>
                 <SubmissionsPage
-                  submissions={submissions.filter((submission) => submission.hackathonId === DEFAULT_HACKATHON_ID)}
+                  submissions={submissions.filter((submission) => submission.hackathonId === DEFAULT_HACKATHON_ID && !submission.isHidden)}
                   submitPath={`${AOAI_HACKATHON_PATH}/submit`}
                   canSubmit={
                     (() => {
@@ -1704,6 +1836,8 @@ function App() {
                       return hackathon ? isHackathonOpen(hackathon, Date.now()) : false
                     })()
                   }
+                  currentUserId={user?.id ?? null}
+                  onHideSubmission={hideOwnSubmission}
                   onVote={handleVote}
                   votingSubmissionIds={votingSubmissionIds}
                   votedSubmissionIds={votedSubmissionIds}
@@ -1716,7 +1850,7 @@ function App() {
             element={
               <RequireAuth user={user} authReady={authReady}>
                 <SubmissionsPage
-                  submissions={submissions.filter((submission) => submission.hackathonId === GAINS_HACKATHON_ID)}
+                  submissions={submissions.filter((submission) => submission.hackathonId === GAINS_HACKATHON_ID && !submission.isHidden)}
                   submitPath={`${GAINS_HACKATHON_PATH}/submit`}
                   canSubmit={
                     (() => {
@@ -1724,6 +1858,8 @@ function App() {
                       return hackathon ? isHackathonOpen(hackathon, Date.now()) : false
                     })()
                   }
+                  currentUserId={user?.id ?? null}
+                  onHideSubmission={hideOwnSubmission}
                   onVote={handleVote}
                   votingSubmissionIds={votingSubmissionIds}
                   votedSubmissionIds={votedSubmissionIds}

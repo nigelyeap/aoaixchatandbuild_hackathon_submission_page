@@ -230,6 +230,14 @@
     @apply mt-1 text-sm text-slate-300 font-semibold flex flex-wrap gap-2 items-center;
   }
 
+  .trackBadge {
+    @apply mt-2 inline-flex items-center rounded-full border border-indigo-300/30 bg-indigo-500/15 px-3 py-1 text-[11px] font-black tracking-wide text-indigo-100;
+  }
+
+  .trackBadgeCompact {
+    @apply mt-1;
+  }
+
   .metaDot {
     @apply opacity-60;
   }

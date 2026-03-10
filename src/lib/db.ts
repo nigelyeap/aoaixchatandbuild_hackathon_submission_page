@@ -19,9 +19,13 @@ type DbSubmissionRow = {
   app_description: string
   problem_description: string
   app_link: string
+  track: string | null
   hackathon_id: string
   votes: number
   user_id: string | null
+  is_hidden: boolean | null
+  hidden_at: string | null
+  hidden_by_user_id: string | null
 }
 
 type DbSubmissionVoteRow = {
@@ -61,9 +65,19 @@ function fromDbSubmission(row: DbSubmissionRow): Submission {
     appDescription: row.app_description,
     problemDescription: row.problem_description,
     appLink: row.app_link,
+    track:
+      row.track === 'Weekly Workflow' ||
+      row.track === 'Kill One Manual Repetitive Task' ||
+      row.track === 'AOAI Shared Utility' ||
+      row.track === 'Other'
+        ? row.track
+        : 'Other',
     hackathonId: row.hackathon_id,
     votes: row.votes,
     userId: row.user_id ?? null,
+    isHidden: row.is_hidden === true,
+    hiddenAt: row.hidden_at ?? null,
+    hiddenByUserId: row.hidden_by_user_id ?? null,
   }
 }
 
@@ -76,9 +90,13 @@ function toDbSubmission(s: Submission): DbSubmissionRow {
     app_description: s.appDescription,
     problem_description: s.problemDescription,
     app_link: s.appLink,
+    track: s.track,
     hackathon_id: s.hackathonId,
     votes: s.votes,
     user_id: s.userId ?? null,
+    is_hidden: s.isHidden,
+    hidden_at: s.hiddenAt,
+    hidden_by_user_id: s.hiddenByUserId,
   }
 }
 
