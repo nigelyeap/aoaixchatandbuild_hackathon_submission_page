@@ -364,7 +364,7 @@ function defaultHackathon(): Hackathon {
     logoUrl: '/assets/aoai-logo.png',
     acceptingSubmissions: true,
     startsAt: '2026-02-26T00:00:00.000Z',
-    endsAt: '2026-03-12T23:59:59.000Z',
+    endsAt: '2026-04-02T23:59:59',
     createdAt: '2026-02-26T00:00:00.000Z',
   }
 }
